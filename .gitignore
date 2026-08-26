@@ -25,6 +25,13 @@ reports/
 node_modules/
 frontend/dist/
 
+# Local venv (this machine's Python 3.11 env)
+.venv311/
+
+# Third-party clones — obtain separately, do NOT vendor (huge + own .git)
+/GeoChat/
+/BigEarthNet.txt/
+
 # Env / secrets
 .env
 *.local
