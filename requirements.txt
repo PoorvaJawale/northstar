@@ -1,0 +1,27 @@
+# ---- Core (needed to run the app in MOCK mode; all lightweight) ----
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+pydantic==2.9.2
+python-multipart==0.0.12
+PyYAML==6.0.2
+Jinja2==3.1.4
+numpy==1.26.4
+Pillow==10.4.0
+
+# ---- Geospatial I/O (real GeoTIFF/SAR reading). Optional: app falls back to PIL without it ----
+rasterio==1.3.10          # pip install may need GDAL; see INTERVENTION.md
+# GDAL                     # usually pulled by rasterio wheels
+
+# ---- Real models (ONLY needed when MOCK=false; require GPU) ----
+# torch==2.3.1            # install the CUDA build from pytorch.org, not from here
+# transformers==4.44.2
+# accelerate==0.34.2
+# bitsandbytes==0.43.3    # 4-bit quantization (Linux/WSL; on Windows use WSL2)
+# peft==0.12.0            # LoRA fine-tuning
+
+# ---- Optional report-to-PDF (HTML report always works without this) ----
+# weasyprint==62.3        # native deps; optional. HTML report is the default.
+
+# ---- Tests ----
+pytest==8.3.3
+httpx==0.27.2

@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+*.egg-info/
+
+# Data & models (never commit — huge)
+data/
+models/
+weights/
+*.tif
+*.tiff
+*.safetensors
+*.bin
+*.pt
+*.ckpt
+checkpoints/
+outputs/
+uploads/
+reports/
+
+# Node
+node_modules/
+frontend/dist/
+
+# Env / secrets
+.env
+*.local
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SatQuery AI — Evidence Report</title>
+<style>
+  body{font-family:system-ui,Segoe UI,Roboto,sans-serif;max-width:820px;margin:32px auto;padding:0 20px;color:#14171f;line-height:1.6}
+  h1{font-size:22px;margin:0 0 4px} .sub{color:#5b6472;font-family:monospace;font-size:13px;margin-bottom:24px}
+  .box{border:1px solid #dbe0e8;border-radius:10px;padding:16px 18px;margin:14px 0}
+  .k{font-family:monospace;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#7a828f}
+  .answer{font-size:17px} .conf{font-weight:700;color:#0d8f8a}
+  img{max-width:100%;border-radius:8px;border:1px solid #dbe0e8;margin-top:8px}
+  ol{padding-left:18px} li{margin:6px 0}
+  code{background:#eef1f5;padding:1px 6px;border-radius:5px;font-size:12.5px}
+  .trace-stage{font-weight:700;text-transform:capitalize}
+</style>
+</head>
+<body>
+  <h1>SatQuery AI — Evidence Report</h1>
+  <div class="sub">PS 26167 · ISRO · agentic remote-sensing assistant</div>
+
+  <div class="box">
+    <div class="k">Query</div>
+    <div>{{ r.query }}</div>
+  </div>
+
+  <div class="box">
+    <div class="k">Task &amp; tools</div>
+    <div><code>{{ r.task }}</code> &nbsp;→&nbsp; {{ r.tools_used|join(", ") }}</div>
+  </div>
+
+  <div class="box">
+    <div class="k">Answer</div>
+    <div class="answer">{{ r.answer }}</div>
+    <div style="margin-top:8px">Confidence: <span class="conf">{{ (r.confidence*100)|round(1) }}%</span></div>
+  </div>
+
+  {% if r.evidence %}
+  <div class="box">
+    <div class="k">Visual evidence</div>
+    {% for e in r.evidence %}
+      <div style="margin-top:10px">{{ e.label or e.kind }}</div>
+      {% if e.image_b64 %}<img src="data:image/png;base64,{{ e.image_b64 }}" alt="{{ e.kind }}">{% endif %}
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <div class="box">
+    <div class="k">Auditable execution trace</div>
+    <ol>
+      {% for s in r.trace %}
+      <li><span class="trace-stage">{{ s.stage }}</span> — {{ s.detail }}
+        {% if s.data %}<br><code>{{ s.data }}</code>{% endif %}
+      </li>
+      {% endfor %}
+    </ol>
+  </div>
+</body>
+</html>
