@@ -40,10 +40,16 @@ OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen2.5:7b-instruct")
 USE_LLM_INTENT = _env_bool("SATQUERY_USE_LLM", not MOCK_MODE)  # off by default in mock
 
 # ---- Real model locations (only read when MOCK_MODE = False) ----
-GEOCHAT_MODEL = os.getenv("GEOCHAT_MODEL", "MBZUAI/GeoChat")     # HF id or local path
+# GeoChat is a LLaVA-1.5 model. It is NOT loadable via AutoModelForCausalLM /
+# AutoProcessor — it loads through geochat.model.builder.load_pretrained_model.
+# The correct HF checkpoint id is MBZUAI/geochat-7B (NOT "MBZUAI/GeoChat", which 404s).
+GEOCHAT_MODEL = os.getenv("GEOCHAT_MODEL", "MBZUAI/geochat-7B")   # HF id or local path
+GEOCHAT_CONV_MODE = os.getenv("GEOCHAT_CONV_MODE", "llava_v1")    # Vicuna-v1.5 template
+GEOCHAT_LOAD_4BIT = _env_bool("GEOCHAT_LOAD_4BIT", True)          # required for 6 GB GPUs
+GEOCHAT_LOAD_8BIT = _env_bool("GEOCHAT_LOAD_8BIT", False)
 CHANGE_MODEL = os.getenv("CHANGE_MODEL", "")                      # local checkpoint path
 OPTICAL_SAR_MODEL = os.getenv("OPTICAL_SAR_MODEL", "")           # local checkpoint path
-LORA_ADAPTER = os.getenv("LORA_ADAPTER", "")                     # path to your fine-tuned adapter
+LORA_ADAPTER = os.getenv("LORA_ADAPTER", "")                     # path to your fine-tuned LoRA adapter
 DEVICE = os.getenv("SATQUERY_DEVICE", "cuda")
 
 # ---- Registry ----

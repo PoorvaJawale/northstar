@@ -34,7 +34,9 @@ class ChangeTool(Tool):
     def run(self, task: Task, images: list[np.ndarray], query: str,
             params: dict[str, Any] | None = None) -> ToolResult:
         params = params or {}
-        if config.MOCK_MODE:
+        # Fall back to mock unless a real change model is configured, so the app
+        # runs live for GeoChat while this tool stays safe until it's wired up.
+        if config.MOCK_MODE or not config.CHANGE_MODEL:
             return self._mock(task, images, query, params)
         return self._real(task, images, query, params)
 

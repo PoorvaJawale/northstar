@@ -20,6 +20,10 @@ checkpoints/
 outputs/
 uploads/
 reports/
+.hf-cache/
+test_rgb.png
+*.png
+!frontend/**
 
 # Node
 node_modules/

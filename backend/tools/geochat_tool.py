@@ -23,31 +23,24 @@ class GeoChatTool(Tool):
     tasks = ["single_vqa", "single_caption", "single_grounding"]
 
     def __init__(self) -> None:
-        self._model = None
-        self._processor = None
+        self._runner = None   # lazy GeoChatRunner
 
     # ---- real model loading (lazy; only when not mock) --------------------
     def _ensure_loaded(self) -> None:
-        if self._model is not None:
+        if self._runner is not None:
             return
-        # === YOUR INTERVENTION POINT #1 ===================================
-        # Requires: torch (CUDA), transformers, the GeoChat weights, and
-        # optionally your LoRA adapter from training/.
-        import torch
-        from transformers import AutoModelForCausalLM, AutoProcessor
-
-        self._processor = AutoProcessor.from_pretrained(config.GEOCHAT_MODEL)
-        self._model = AutoModelForCausalLM.from_pretrained(
-            config.GEOCHAT_MODEL,
-            torch_dtype=torch.float16,
-            device_map=config.DEVICE,
-            load_in_4bit=True,          # bitsandbytes; use WSL2 on Windows
+        # Loads GeoChat via the correct geochat.* loader (see geochat_runtime.py).
+        # Requires: torch (CUDA), transformers==4.31.0, the geochat-7B checkpoint,
+        # and optionally your LoRA adapter (config.LORA_ADAPTER).
+        from .geochat_runtime import GeoChatRunner
+        self._runner = GeoChatRunner(
+            model_path=config.GEOCHAT_MODEL,
+            conv_mode=config.GEOCHAT_CONV_MODE,
+            load_4bit=config.GEOCHAT_LOAD_4BIT,
+            load_8bit=config.GEOCHAT_LOAD_8BIT,
+            adapter=config.LORA_ADAPTER or None,
+            device=config.DEVICE,
         )
-        if config.LORA_ADAPTER:
-            from peft import PeftModel
-            self._model = PeftModel.from_pretrained(self._model, config.LORA_ADAPTER)
-        self._model.eval()
-        # ==================================================================
 
     # ---- entry point ------------------------------------------------------
     def run(self, task: Task, images: list[np.ndarray], query: str,
@@ -57,25 +50,57 @@ class GeoChatTool(Tool):
             return self._mock(task, images, query, params)
         return self._real(task, images, query, params)
 
-    # ---- REAL inference (fill in) ----------------------------------------
+    # ---- REAL inference --------------------------------------------------
+    _PROMPTS = {
+        "single_caption": "Describe the land-cover and major objects visible in this image.",
+        "single_grounding": "[refer] {q}",
+    }
+
     def _real(self, task, images, query, params) -> ToolResult:
+        from .geochat_runtime import numpy_to_pil_rgb
         self._ensure_loaded()
-        img = images[0]
-        # === YOUR INTERVENTION POINT #2 ==================================
-        # Build the prompt per task, run the model, parse text (and, for
-        # grounding, parse the predicted box). Derive confidence from the
-        # model's token/softmax scores — NOT a constant.
-        #
-        # prompt = self._build_prompt(task, query)
-        # inputs = self._processor(images=img, text=prompt, return_tensors="pt")...
-        # out = self._model.generate(**inputs, max_new_tokens=params.get("max_new_tokens",256))
-        # text = self._processor.decode(out[0], skip_special_tokens=True)
-        # box  = self._parse_box(text)   # for grounding
-        # conf = self._score_to_conf(out.scores)
-        raise NotImplementedError(
-            "GeoChat real inference not implemented yet. Run in MOCK mode "
-            "(SATQUERY_MOCK=1) or implement _real(). See INTERVENTION.md #1."
+        image = numpy_to_pil_rgb(images[0])
+
+        if task == "single_caption":
+            prompt = self._PROMPTS["single_caption"]
+        elif task == "single_grounding":
+            prompt = self._PROMPTS["single_grounding"].format(q=query)
+        else:  # single_vqa
+            prompt = query
+
+        text, conf, _ = self._runner.generate(
+            image, prompt,
+            max_new_tokens=int(params.get("max_new_tokens", 256)),
+            temperature=float(params.get("temperature", 0.2)),
         )
+
+        evidence = []
+        if task == "single_grounding":
+            h, w = images[0].shape[0], images[0].shape[1]
+            box = self._parse_box(text, w, h)
+            if box:
+                evidence.append(Evidence(
+                    kind="bbox", label=query,
+                    image_b64=render_bbox(images[0], box, query),
+                    data={"box_xyxy": box}))
+        return ToolResult(text=text, evidence=evidence, confidence=conf,
+                          tool_name=self.name, params_used=params)
+
+    @staticmethod
+    def _parse_box(text: str, w: int, h: int):
+        """Best-effort parse of GeoChat's {<x><y><x><y>|<angle>} grounding output.
+        GeoChat emits coords on a 0-100 grid; scale to pixels. Returns
+        [x0,y0,x1,y1] or None if nothing parseable (then we return text only)."""
+        import re
+        nums = re.findall(r"\d+(?:\.\d+)?", text.replace("|", " "))
+        if len(nums) < 4:
+            return None
+        x0, y0, x1, y1 = (float(v) for v in nums[:4])
+        sx, sy = w / 100.0, h / 100.0
+        box = [x0 * sx, y0 * sy, x1 * sx, y1 * sy]
+        if box[2] <= box[0] or box[3] <= box[1]:
+            return None
+        return box
 
     # ---- MOCK inference (runs today) -------------------------------------
     def _mock(self, task, images, query, params) -> ToolResult:

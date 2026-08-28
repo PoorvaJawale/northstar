@@ -9,6 +9,38 @@ Legend: 🟢 do to demo the architecture · 🟡 do for a strong internal round 
 
 ---
 
+## ⭐ GeoChat pipeline — NOW IMPLEMENTED (what's code vs what's yours)
+
+I implemented the full GeoChat path. **Code is done; these hand-offs are yours:**
+
+| File (implemented) | What it does | YOUR hand-off |
+|---|---|---|
+| `backend/tools/geochat_runtime.py` | Correct GeoChat load + inference | — (ready) |
+| `infer.py` | One-shot GeoChat inference | Provide a real image + the checkpoint |
+| `training/render_images.py` | LMDB → RGB PNGs | **Provide the BigEarthNet LMDB** |
+| `training/convert_to_llava.py` | jsonl → LLaVA train JSON | — (ready) |
+| `training/evaluate_vqa.py` | before/after accuracy | — (ready) |
+| `kaggle/KAGGLE_GUIDE.md` | T4 QLoRA, cell-by-cell | **Run it on Kaggle** |
+| `backend/tools/geochat_tool.py` | GeoChat wired into the app | Set `SATQUERY_MOCK=0` + `LORA_ADAPTER` |
+
+**Your concrete hand-offs, in order:**
+1. **App deps in `.venv311`.** It currently has GeoChat/torch but NOT the app deps.
+   Run `.\.venv311\Scripts\python.exe -m pip install fastapi "uvicorn[standard]" pydantic python-multipart pyyaml jinja2` so the backend runs in the same env as GeoChat.
+2. **Get the images (the real blocker).** Encode a small BigEarthNet v2.0 sample to
+   an `Encoded-BigEarthNet` LMDB with `rico-hdl` (binary from its GitHub releases —
+   NOT pip). A few thousand patches is enough. Then `render_images.py` works.
+3. **Prove one inference** locally: download `MBZUAI/geochat-7B` (~14 GB) once, then
+   `infer.py --image <png> --query "..."` in 4-bit. Confirms 6 GB holds.
+4. **Fine-tune on Kaggle** (T4): follow `kaggle/KAGGLE_GUIDE.md` end to end → download
+   the LoRA adapter zip → unzip to `models/lora-geochat`.
+5. **Before/after table**: run `training/evaluate_vqa.py` twice (with/without `--adapter`).
+6. **Flip the app live**: `SATQUERY_MOCK=0`, `LORA_ADAPTER=models/lora-geochat`.
+
+Decisions already made with you: fine-tune venue = **Kaggle/Colab T4** (6 GB can't
+QLoRA a 7B). Everything above assumes that.
+
+---
+
 ## 0. 🟢 Run it once in MOCK mode (5 min, no GPU)
 ```bash
 python -m venv .venv && .venv\Scripts\Activate.ps1     # PowerShell
