@@ -99,6 +99,14 @@ if _FRONTEND.exists():
     app.mount("/app", StaticFiles(directory=str(_FRONTEND), html=True), name="app")
 
 
+@app.get("/space-bg.jpg")
+def space_bg():
+    path = _FRONTEND / "public" / "space-bg.jpg"
+    if not path.exists():
+        raise HTTPException(404, "Background image not found")
+    return FileResponse(path, media_type="image/jpeg")
+
+
 @app.get("/", response_class=HTMLResponse)
 def root():
     index = _FRONTEND / "index.html"

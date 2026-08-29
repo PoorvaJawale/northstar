@@ -1,110 +1,170 @@
-// SatQuery AI — minimal single-page frontend (no build step).
 const $ = (id) => document.getElementById(id);
 let files = [];
 
-const EXAMPLES = [
-  "Describe the land-cover and major objects visible in this image.",
-  "Highlight the water body referred to in the query.",
-  "What changed between these two dates, and where did the change occur?",
-  "Use the optical and SAR images together to identify built-up and water regions.",
-  "Has the built-up area increased, decreased, or remained unchanged?",
-];
+function resetPanels() {
+  const evidence = $("evidence");
+  const trace = $("trace");
+  const visualPanel = $("visualPanel");
+  const logPanel = $("logPanel");
+  const reportWrap = $("reportWrap");
 
-// ---- boot ----
-(async function init() {
+  if (evidence) evidence.innerHTML = "";
+  if (trace) trace.innerHTML = "";
+  if (visualPanel) visualPanel.classList.add("hidden");
+  if (logPanel) logPanel.classList.add("hidden");
+  if (reportWrap) reportWrap.classList.add("hidden");
+
+  $("answer").textContent = "";
+  $("conf").textContent = "";
+  $("task").textContent = "";
+  $("tools").textContent = "";
+  $("report").href = "#";
+}
+
+async function init() {
+  resetPanels();
   try {
-    const h = await (await fetch("/api/health")).json();
-    $("mode").textContent = h.mock_mode ? "MOCK MODE" : "LIVE MODELS";
-    $("mode").style.color = h.mock_mode ? "var(--accent2)" : "var(--good)";
-  } catch { $("mode").textContent = "backend offline"; }
-  EXAMPLES.forEach((e) => {
-    const c = document.createElement("span");
-    c.className = "chip"; c.textContent = e;
-    c.onclick = () => { $("query").value = e; };
-    $("examples").appendChild(c);
-  });
-  loadRegistry();
-})();
+    const health = await fetch("/api/health");
+    const data = await health.json();
+    $("mode").textContent = data.mock_mode ? "MOCK MODE" : "LIVE MODELS";
+  } catch (error) {
+    $("mode").textContent = "OFFLINE";
+  }
+}
 
-// ---- file picking ----
-$("files").addEventListener("change", (ev) => {
-  files = Array.from(ev.target.files).slice(0, 2);
-  $("dropLabel").textContent = files.length
-    ? `${files.length} image(s) selected` : "Click to choose 1–2 images";
-  const t = $("thumbs"); t.innerHTML = "";
-  files.forEach((f) => {
+$("files").addEventListener("change", (event) => {
+  files = Array.from(event.target.files).slice(0, 2);
+  $("dropLabel").textContent = files.length ? `${files.length} image(s) selected` : "Select 1–2 images";
+
+  const thumbs = $("thumbs");
+  thumbs.innerHTML = "";
+
+  files.forEach((file) => {
     const img = document.createElement("img");
-    img.src = URL.createObjectURL(f); t.appendChild(img);
+    img.src = URL.createObjectURL(file);
+    thumbs.appendChild(img);
   });
 });
 
-// ---- run query ----
 $("go").addEventListener("click", async () => {
   const text = $("query").value.trim();
-  if (!files.length) return alert("Please choose 1 or 2 images.");
-  if (!text) return alert("Please type a question.");
-  $("go").disabled = true; $("go").textContent = "Running…";
-  const fd = new FormData();
-  fd.append("text", text);
-  files.forEach((f) => fd.append("images", f));
+
+  if (!files.length) {
+    alert("Please choose 1 or 2 images.");
+    return;
+  }
+
+  if (!text) {
+    alert("Please type a question.");
+    return;
+  }
+
+  $("go").disabled = true;
+  $("go").textContent = "RUNNING";
+
+  const formData = new FormData();
+  formData.append("text", text);
+  files.forEach((file) => formData.append("images", file));
+
   try {
-    const r = await fetch("/api/query", { method: "POST", body: fd });
-    const data = await r.json();
-    render(data);
-  } catch (e) {
-    alert("Request failed: " + e);
+    const response = await fetch("/api/query", {
+      method: "POST",
+      body: formData
+    });
+
+    const data = await response.json();
+    renderResult(data);
+  } catch (error) {
+    alert("Request failed: " + error);
   } finally {
-    $("go").disabled = false; $("go").textContent = "Run SatQuery";
+    $("go").disabled = false;
+    $("go").textContent = "RUN QUERY";
   }
 });
 
-// ---- render result ----
-function render(d) {
-  $("result").classList.remove("hidden");
-  $("answer").innerHTML = d.answer || "(no answer)";
-  $("answer").className = "answer" + (d.ok ? "" : " err");
-  $("conf").textContent = d.ok ? Math.round((d.confidence || 0) * 100) + "%" : "—";
-  $("task").textContent = d.task || "—";
-  $("tools").textContent = (d.tools_used || []).join(", ") || "—";
+function renderResult(data) {
+  resetPanels();
 
-  const rep = $("report");
-  if (d.report_id) { rep.style.display = ""; rep.href = "/api/report/" + d.report_id; }
-  else rep.style.display = "none";
+  if (!data || typeof data !== "object") {
+    return;
+  }
 
-  const ev = $("evidence"); ev.innerHTML = "";
-  (d.evidence || []).forEach((e) => {
-    if (!e.image_b64) return;
-    const fig = document.createElement("figure");
-    fig.innerHTML = `<img src="data:image/png;base64,${e.image_b64}">
-      <figcaption>${e.label || e.kind}</figcaption>`;
-    ev.appendChild(fig);
-  });
+  const logPanel = $("logPanel");
+  const visualPanel = $("visualPanel");
 
-  const tr = $("trace"); tr.innerHTML = "";
-  (d.trace || []).forEach((s) => {
-    const li = document.createElement("li");
-    li.innerHTML = `<span class="stage">${s.stage}</span> — ${s.detail}` +
-      (s.data && Object.keys(s.data).length
-        ? `<span class="data">${JSON.stringify(s.data)}</span>` : "");
-    tr.appendChild(li);
-  });
-}
+  if (data.answer || data.task || data.tools_used || data.confidence !== undefined || Array.isArray(data.trace)) {
+    logPanel.classList.remove("hidden");
 
-// ---- registry viewer + live reload (the demo moment) ----
-async function loadRegistry() {
-  try {
-    const d = await (await fetch("/api/registry")).json();
-    const box = $("registry"); box.innerHTML = "";
-    d.tools.forEach((t) => {
-      const el = document.createElement("div");
-      el.className = "rtool";
-      el.innerHTML = `<div class="rn">${t.name}</div>
-        <div class="rt">tasks: ${t.tasks.join(", ")}<br>input: ${t.input_type}</div>`;
-      box.appendChild(el);
+    if (data.answer) {
+      $("answer").textContent = data.answer;
+    }
+
+    if (data.confidence !== undefined && data.confidence !== null) {
+      $("conf").textContent = `${Math.round(data.confidence * 100)}%`;
+    }
+
+    if (data.task) {
+      $("task").textContent = data.task;
+    }
+
+    if (Array.isArray(data.tools_used) && data.tools_used.length) {
+      $("tools").textContent = data.tools_used.join(", ");
+    }
+
+    if (data.report_id) {
+      $("report").href = `/api/report/${data.report_id}`;
+      $("reportWrap").classList.remove("hidden");
+    }
+
+    if (Array.isArray(data.trace) && data.trace.length) {
+      const traceList = $("trace");
+      data.trace.forEach((step) => {
+        const item = document.createElement("li");
+        const stage = document.createElement("span");
+        stage.className = "trace-stage";
+        stage.textContent = step.stage || "STEP";
+
+        const text = document.createElement("span");
+        text.textContent = ` — ${step.detail || ""}`;
+
+        item.appendChild(stage);
+        item.appendChild(text);
+
+        if (step.data && Object.keys(step.data).length) {
+          const meta = document.createElement("span");
+          meta.className = "trace-data";
+          meta.textContent = JSON.stringify(step.data, null, 2);
+          item.appendChild(meta);
+        }
+
+        traceList.appendChild(item);
+      });
+    }
+  }
+
+  if (Array.isArray(data.evidence) && data.evidence.length) {
+    visualPanel.classList.remove("hidden");
+    const evidenceWrap = $("evidence");
+
+    data.evidence.forEach((item) => {
+      if (!item || !item.image_b64) return;
+
+      const card = document.createElement("figure");
+      card.className = "evidence-card";
+
+      const img = document.createElement("img");
+      img.src = `data:image/png;base64,${item.image_b64}`;
+      img.alt = item.label || item.kind || "Evidence image";
+
+      const meta = document.createElement("figcaption");
+      meta.className = "evidence-meta";
+      meta.textContent = item.label || item.kind || "Evidence";
+
+      card.appendChild(img);
+      card.appendChild(meta);
+      evidenceWrap.appendChild(card);
     });
-  } catch { /* backend offline */ }
+  }
 }
-$("reload").addEventListener("click", async () => {
-  await fetch("/api/reload-registry", { method: "POST" });
-  loadRegistry();
-});
+
+init();

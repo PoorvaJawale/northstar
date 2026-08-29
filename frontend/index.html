@@ -1,62 +1,16 @@
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>SatQuery AI</title>
-  <link rel="stylesheet" href="/app/styles.css">
-</head>
-<body>
-  <header class="top">
-    <div class="brand">🛰️ <b>SatQuery AI</b><span class="ps">PS 26167 · ISRO</span></div>
-    <div id="mode" class="mode">…</div>
-  </header>
-
-  <main>
-    <section class="panel">
-      <h2>Ask a question about satellite imagery</h2>
-      <p class="hint">Upload <b>1 image</b> (single-image tasks), or <b>2 images</b> for an
-        optical–SAR pair or a bi-temporal pair. GeoTIFF / TIFF / PNG / JPEG.</p>
-
-      <label class="drop" id="drop">
-        <input id="files" type="file" accept=".tif,.tiff,.png,.jpg,.jpeg" multiple hidden>
-        <span id="dropLabel">Click to choose 1–2 images</span>
-        <div id="thumbs" class="thumbs"></div>
-      </label>
-
-      <input id="query" class="query" type="text"
-             placeholder="e.g. What changed between these two dates, and where?">
-
-      <div class="examples" id="examples"></div>
-
-      <button id="go" class="go">Run SatQuery</button>
-    </section>
-
-    <section id="result" class="panel result hidden">
-      <div class="answerRow">
-        <div>
-          <div class="k">Answer</div>
-          <div id="answer" class="answer"></div>
-        </div>
-        <div class="confWrap"><div class="k">Confidence</div>
-          <div id="conf" class="conf">—</div></div>
-      </div>
-      <div class="taskLine">Task <code id="task">—</code> · tools <code id="tools">—</code>
-        · <a id="report" href="#" target="_blank">download report ↓</a></div>
-
-      <div id="evidence" class="evidence"></div>
-
-      <div class="k" style="margin-top:18px">Execution trace (what the agent did)</div>
-      <ol id="trace" class="trace"></ol>
-    </section>
-
-    <section class="panel">
-      <div class="k">Live model registry
-        <button id="reload" class="mini">reload registry.yaml</button></div>
-      <div id="registry" class="registry"></div>
-    </section>
-  </main>
-
-  <script src="/app/app.js"></script>
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Northstar geospatial intelligence workstation" />
+    <title>Northstar | Satellite Intelligence Platform</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <script type="module" src="/src/main.jsx"></script>
+  </head>
+  <body class="bg-bg">
+    <div id="root"></div>
+  </body>
 </html>
