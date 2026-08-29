@@ -37,7 +37,7 @@ verified working on **Windows 11 + RTX 3050 (6 GB) + CUDA 12.1**:
 
 | Package | Version | Why this exact version |
 |---|---|---|
-| Python | 3.11.9 | GeoChat + torch cu121 wheels |
+| Python | 3.11.9 | GeoChat + torch cu121 wheels | 
 | torch | 2.5.1+cu121 | CUDA 12.1 build (from pytorch.org, not plain pip) |
 | torchvision | 0.20.1+cu121 | matches torch 2.5.1 |
 | **transformers** | **4.31.0** | GeoChat's MPT/LLaMA code needs `_expand_mask`; newer transformers removed it |
