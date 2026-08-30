@@ -380,12 +380,17 @@ function App() {
                   {loading ? (
                     <span className="scan-text text-muted">◇ Awaiting artifacts…</span>
                   ) : evidence.length ? (
-                    <div className="space-y-2 text-text">
+                    <div className="grid gap-3 sm:grid-cols-2">
                       {evidence.map((e, i) => (
-                        <div key={i}>
-                          ◇ {(e.kind || 'evidence').toUpperCase()}{e.label ? ` · ${e.label}` : ''}
-                          {e.data ? <span className="text-muted"> {JSON.stringify(e.data)}</span> : null}
-                        </div>
+                        <figure key={i} className="overflow-hidden border border-white/10 bg-[#0b1218]/70">
+                          {e.image_b64 ? (
+                            <img src={`data:image/png;base64,${e.image_b64}`} alt={e.label || e.kind}
+                              className="w-full bg-black object-contain" />
+                          ) : null}
+                          <figcaption className="border-t border-white/10 p-2 text-[11px] uppercase tracking-[0.12em] text-muted">
+                            ◇ {(e.kind || 'evidence').toUpperCase()}{e.label ? ` · ${e.label}` : ''}
+                          </figcaption>
+                        </figure>
                       ))}
                     </div>
                   ) : result ? (
