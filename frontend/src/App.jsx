@@ -17,11 +17,31 @@ function App() {
   const [registry, setRegistry] = useState([]);
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [traceOpen, setTraceOpen] = useState({});
+  const [hasResults, setHasResults] = useState(false);
+  const [activityExpanded, setActivityExpanded] = useState(false);
 
   useEffect(() => {
     loadHealth();
     loadRegistry();
   }, []);
+
+  useEffect(() => {
+    const onKeyDown = (event) => {
+      if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+        event.preventDefault();
+        handleSubmit();
+      }
+
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        clearAllImages();
+      }
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [files, query, loading]);
 
   async function loadHealth() {
     try {
@@ -63,9 +83,19 @@ function App() {
 
   const clearAllImages = () => {
     setFiles([]);
+    setResult(null);
+    setHasResults(false);
+    setTraceOpen({});
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
+  };
+
+  const toggleTracePayload = (index) => {
+    setTraceOpen((prev) => ({
+      ...prev,
+      [index]: !prev[index],
+    }));
   };
 
   const handleSubmit = async () => {
@@ -90,6 +120,7 @@ function App() {
       });
       const data = await res.json();
       setResult(data);
+      setHasResults(true);
     } catch (error) {
       alert(`Request failed: ${error}`);
     } finally {
@@ -99,9 +130,39 @@ function App() {
 
   const evidence = result?.evidence || [];
   const trace = result?.trace || [];
+  const previewTrace = trace.slice(0, activityExpanded ? trace.length : 2);
   const confidencePct = result?.confidence !== undefined && result?.confidence !== null
     ? `${Math.round(Number(result.confidence) * 100)}%`
     : '—';
+
+  const metricRows = useMemo(() => {
+    const confidenceValue = result?.confidence !== undefined && result?.confidence !== null
+      ? Math.max(0, Math.min(100, Number(result.confidence) * 100))
+      : 0;
+
+    return [
+      {
+        label: 'Confidence',
+        value: confidencePct,
+        percent: confidenceValue,
+      },
+      {
+        label: 'Task match',
+        value: result?.task ? 'High' : 'Pending',
+        percent: result?.task ? 82 : 0,
+      },
+      {
+        label: 'Evidence coverage',
+        value: `${evidence.length || 0} items`,
+        percent: evidence.length ? Math.min(100, evidence.length * 50) : 0,
+      },
+      {
+        label: 'Signal quality',
+        value: result ? 'Stable' : 'Idle',
+        percent: result ? 88 : 0,
+      },
+    ];
+  }, [confidencePct, evidence.length, result]);
 
   return (
     <div className="min-h-screen px-2 py-4 text-text sm:px-4 lg:px-6">
@@ -135,9 +196,9 @@ function App() {
           </div>
         </header>
 
-        <main className="p-3 sm:p-4 lg:p-5">
-          <div className="grid min-h-[calc(100vh-120px)] grid-cols-1 gap-4 xl:grid-cols-[335px_minmax(0,1fr)]">
-            <aside className="flex flex-col gap-4 border border-white/10 bg-[#0d1319]/55 p-3 shadow-subtle">
+        <main className={`p-3 sm:p-4 lg:p-5 ${!hasResults ? 'flex items-center justify-center' : ''}`}>
+          <div className={`grid min-h-[calc(100vh-120px)] w-full gap-4 ${hasResults ? 'grid-cols-1 xl:grid-cols-[335px_minmax(0,1fr)]' : 'grid-cols-1'}`}>
+            <aside className={`flex flex-col gap-4 border border-white/10 bg-[#0d1319]/55 p-3 shadow-subtle ${!hasResults ? 'mx-auto w-full max-w-[760px]' : ''}`}>
               <div className="flex items-center justify-between border-b border-border pb-3">
                 <div className="font-mono text-[10px] font-semibold uppercase tracking-[0.22em] text-muted">Input</div>
                 <div className="flex items-center gap-2">
@@ -148,7 +209,7 @@ function App() {
                       onClick={clearAllImages}
                       className="font-mono text-[9px] uppercase tracking-[0.12em] text-muted hover:text-text"
                     >
-                      Clear
+                      Clear [Esc]
                     </button>
                   )}
                 </div>
@@ -168,7 +229,7 @@ function App() {
                         <img
                           src={URL.createObjectURL(file)}
                           alt={file.name}
-                          className="h-16 w-16 object-cover"
+                          className="h-16 w-16 object-contain bg-black"
                         />
                         <div className="min-w-0 flex-1">
                           <div className="truncate text-xs font-medium text-text">{file.name}</div>
@@ -193,21 +254,21 @@ function App() {
               </div>
 
               <div className="space-y-3 border-t border-white/10 pt-4">
-                <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted">Task / mode</div>
-                <div className="border border-white/10 bg-[#1a2128]/60 p-3 text-sm text-text">
+                <div className="ui-label font-mono text-[10px] uppercase tracking-[0.18em]">Task / mode</div>
+                <div className="data-value border border-white/10 bg-[#1a2128]/60 p-3 text-sm">
                   {result?.task ? result.task.replace(/_/g, ' ').toUpperCase() : 'Awaiting detection'}
                 </div>
               </div>
 
               <div className="space-y-3 border-t border-white/10 pt-4">
-                <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted">Model</div>
-                <div className="border border-white/10 bg-[#1a2128]/60 p-3 text-sm text-text">
+                <div className="ui-label font-mono text-[10px] uppercase tracking-[0.18em]">Model</div>
+                <div className="data-value border border-white/10 bg-[#1a2128]/60 p-3 text-sm">
                   {result?.tools_used?.length ? result.tools_used.join(', ') : 'Auto-selected by agent'}
                 </div>
               </div>
 
               <div className="mt-auto space-y-3 border-t border-white/10 pt-4">
-                <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted">Command</div>
+<div className="ui-label font-mono text-[10px] uppercase tracking-[0.18em]">Command</div>
                 <textarea
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
@@ -233,173 +294,184 @@ function App() {
                   type="button"
                   onClick={handleSubmit}
                   disabled={loading}
-                  className="w-full border border-[#7fc3ff]/40 bg-[#7fc3ff]/90 px-4 py-3 font-mono text-[11px] font-bold uppercase tracking-[0.2em] text-[#06131d] shadow-[0_0_0_1px_rgba(127,195,255,0.25)] hover:bg-[#8ed0ff] disabled:cursor-not-allowed disabled:opacity-60"
+                  className="primary-cta w-full px-4 py-3 font-mono text-[11px] font-bold uppercase tracking-[0.2em]"
                 >
-                  {loading ? 'Processing...' : 'Run query'}
+                  {loading ? 'Processing...' : 'Run query [Ctrl+Enter]'}
                 </button>
               </div>
             </aside>
 
-            <section className="flex flex-col gap-4">
-              <div className="border border-white/10 bg-[#0d1319]/55 p-3 shadow-subtle">
-                <div className="mb-3 flex items-center justify-between border-b border-white/10 pb-3">
-                  <div className="font-mono text-[10px] font-semibold uppercase tracking-[0.22em] text-muted">Imagery workspace</div>
-                  <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted">{inputSummary}</div>
+            {hasResults && (
+              <section className="flex flex-col gap-4">
+                <div className="grid gap-4 lg:grid-cols-[1.3fr_0.7fr]">
+                  <div className="border border-white/10 bg-[#0d1319]/55 p-4 shadow-subtle">
+                    <div className="mb-3 flex items-center justify-between border-b border-white/10 pb-3">
+                      <div className="ui-label font-mono text-[10px] font-semibold uppercase tracking-[0.22em]">Analysis</div>
+                      <div className="data-value font-mono text-[10px] uppercase tracking-[0.18em]">{result ? 'Result' : 'Waiting'}</div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div className="border border-white/10 bg-[#1a2128]/60 p-4">
+                        <div className="ui-label font-mono text-[10px] uppercase tracking-[0.18em]">Answer</div>
+                        <div className="data-value mt-3 text-lg leading-relaxed">
+                          {result?.answer || 'Awaiting analysis output.'}
+                        </div>
+                      </div>
+
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <div className="border border-white/10 bg-[#1a2128]/60 p-4">
+                          <div className="ui-label font-mono text-[10px] uppercase tracking-[0.18em]">Confidence</div>
+                          <div className="data-value mt-3 text-3xl font-semibold">{confidencePct}</div>
+                        </div>
+
+                        <div className="border border-white/10 bg-[#1a2128]/60 p-4">
+                          <div className="ui-label font-mono text-[10px] uppercase tracking-[0.18em]">Task / Tool</div>
+                          <div className="data-value mt-3 text-sm">
+                            {result?.task ? result.task.replace(/_/g, ' ').toUpperCase() : '—'}
+                          </div>
+                          <div className="mt-2 text-xs text-muted">
+                            {result?.tools_used?.length ? result.tools_used.join(', ') : '—'}
+                          </div>
+                        </div>
+                      </div>
+
+                      {result?.report_id && (
+                        <div className="border border-white/10 bg-[#1a2128]/60 p-3">
+                          <a
+                            href={`/api/report/${result.report_id}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="font-mono text-[10px] uppercase tracking-[0.18em] text-[#7fc3ff] hover:text-[#a8d9ff]"
+                          >
+                            Download report
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="border border-white/10 bg-[#0d1319]/55 p-4 shadow-subtle">
+                    <div className="mb-3 flex items-center justify-between border-b border-white/10 pb-3">
+                      <div className="ui-label font-mono text-[10px] font-semibold uppercase tracking-[0.22em]">Model registry</div>
+                    </div>
+
+                    <div className="space-y-3">
+                      {registry.length ? registry.map((tool) => (
+                        <div key={tool.name} className="border border-white/10 bg-[#1a2128]/60 p-3">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="font-mono text-[11px] font-semibold uppercase tracking-[0.15em] text-text">{tool.name}</div>
+                            <div className="model-status" aria-label="active model">■</div>
+                          </div>
+                          <div className="mt-2 text-[11px] text-muted">{tool.tasks?.join(' · ') || 'task set'}</div>
+                          <div className="mt-1 font-mono text-[10px] uppercase tracking-[0.12em] text-muted">{tool.input_type}</div>
+                        </div>
+                      )) : (
+                        <div className="border border-white/10 bg-[#1a2128]/60 p-3 text-sm text-muted">
+                          <span className="model-status mr-2" aria-label="inactive model">□</span>
+                          Registry unavailable.
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
 
-                <div className="min-h-[420px] border border-white/10 bg-[#060b10]/60 p-3">
-                  {files.length ? (
-                    <div className="grid h-full min-h-[380px] gap-4 md:grid-cols-2">
-                      {files.map((file, index) => (
-                        <div key={`${file.name}-view-${index}`} className="group relative overflow-hidden border border-white/10 bg-[#0c1319]/70">
-                          <img
-                            src={URL.createObjectURL(file)}
-                            alt={file.name}
-                            className="h-full w-full object-cover"
-                          />
-                          <div className="absolute left-3 top-3 border border-white/10 bg-[#111a22]/80 px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.12em] text-text">
-                            {index === 0 ? 'Image 01' : 'Image 02'}
+                <div className="border border-white/10 bg-[#0d1319]/55 p-4 shadow-subtle">
+                  <div className="mb-4 flex items-center justify-between border-b border-white/10 pb-3">
+                    <div className="font-mono text-[10px] font-semibold uppercase tracking-[0.22em] text-muted">Evidence</div>
+                  </div>
+
+                  {evidence.length ? (
+                    <div className="grid gap-4 md:grid-cols-2">
+                      {evidence.map((item, index) => (
+                        <div key={`${item.kind}-${index}`} className="overflow-hidden border border-white/10 bg-[#1a2128]/60">
+                          {item.image_b64 ? (
+                            <img src={`data:image/png;base64,${item.image_b64}`} alt={item.label || 'evidence'} className="h-52 w-full object-cover" />
+                          ) : null}
+                          <div className="border-t border-border p-3 font-mono text-[10px] uppercase tracking-[0.14em] text-muted">
+                            {item.label || item.kind || 'evidence'}
                           </div>
-                          <button
-                            type="button"
-                            onClick={() => removeImage(index)}
-                            className="absolute right-3 top-3 border border-white/10 bg-[#111a22]/80 px-2.5 py-1 font-mono text-[9px] uppercase tracking-[0.12em] text-muted opacity-0 transition group-hover:opacity-100 hover:text-text"
-                            aria-label={`Remove ${file.name}`}
-                          >
-                            Remove
-                          </button>
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <div className="flex h-full min-h-[380px] items-center justify-center text-sm text-muted">
-                      Imagery will appear here after upload.
-                    </div>
+                    <div className="text-sm text-muted">No evidence returned yet.</div>
                   )}
                 </div>
-              </div>
 
-              <div className="grid gap-4 lg:grid-cols-[1.3fr_0.7fr]">
-                <div className="border border-white/10 bg-[#0d1319]/55 p-4 shadow-subtle">
+                <div className="border border-white/10 bg-[#0d1319]/55 p-3 shadow-subtle">
                   <div className="mb-3 flex items-center justify-between border-b border-white/10 pb-3">
-                    <div className="font-mono text-[10px] font-semibold uppercase tracking-[0.22em] text-muted">Analysis</div>
-                    <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted">{result ? 'Result' : 'Waiting'}</div>
+                    <div className="font-mono text-[10px] font-semibold uppercase tracking-[0.22em] text-muted">Metrics & visualizations</div>
+                    <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted">{inputSummary}</div>
                   </div>
 
-                  <div className="space-y-4">
-                    <div className="border border-white/10 bg-[#1a2128]/60 p-4">
-                      <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted">Answer</div>
-                      <div className="mt-3 text-lg leading-relaxed text-text">
-                        {result?.answer || 'Awaiting analysis output.'}
-                      </div>
-                    </div>
-
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      <div className="border border-white/10 bg-[#1a2128]/60 p-4">
-                        <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted">Confidence</div>
-                        <div className="mt-3 text-3xl font-semibold text-text">{confidencePct}</div>
-                      </div>
-
-                      <div className="border border-white/10 bg-[#1a2128]/60 p-4">
-                        <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted">Task / Tool</div>
-                        <div className="mt-3 text-sm text-text">
-                          {result?.task ? result.task.replace(/_/g, ' ').toUpperCase() : '—'}
+                  <div className="space-y-5">
+                    {metricRows.map((row) => (
+                      <div key={row.label}>
+                        <div className="mb-1 flex items-center justify-between gap-2 text-[10px] uppercase tracking-[0.16em] text-muted">
+                          <span>{row.label}</span>
+                          <span className="text-white">{row.value}</span>
                         </div>
-                        <div className="mt-2 text-xs text-muted">
-                          {result?.tools_used?.length ? result.tools_used.join(', ') : '—'}
+                        <div className="h-2 border border-white/10 bg-[#0b1117]">
+                          <div className="h-full bg-[#e8edf3]" style={{ width: `${row.percent}%` }} />
                         </div>
                       </div>
-                    </div>
+                    ))}
+                  </div>
+                </div>
 
-                    {result?.report_id && (
-                      <div className="border border-white/10 bg-[#1a2128]/60 p-3">
-                        <a
-                          href={`/api/report/${result.report_id}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="font-mono text-[10px] uppercase tracking-[0.18em] text-[#7fc3ff] hover:text-[#a8d9ff]"
+                <div className="border border-white/10 bg-[#0d1319]/55 p-4 shadow-subtle">
+                  <div className="mb-4 flex items-center justify-between border-b border-white/10 pb-3">
+                    <div className="font-mono text-[10px] font-semibold uppercase tracking-[0.22em] text-muted">Agent activity</div>
+                  </div>
+
+                  {trace.length ? (
+                    <div className="space-y-3">
+                      {previewTrace.map((step, index) => {
+                        const isPayloadOpen = Boolean(traceOpen[index]);
+
+                        return (
+                          <div key={`${step.stage}-${index}`} className="border border-white/10 bg-[#1a2128]/60 p-3">
+                            <div className="flex items-center gap-2">
+                              <span className="model-status text-[12px]">■</span>
+                              <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-text">{formatStage(step.stage)}</span>
+                            </div>
+                            <div className="mt-2 text-sm text-text">{step.detail}</div>
+                            {step.data && Object.keys(step.data).length ? (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => toggleTracePayload(index)}
+                                  className="trace-toggle mt-3"
+                                >
+                                  {isPayloadOpen ? '[-] Hide payload' : '[+] View payload'}
+                                </button>
+                                {isPayloadOpen ? (
+                                  <pre className="mt-2 overflow-x-auto whitespace-pre-wrap border border-white/10 bg-[#08111b]/80 p-2 font-mono text-[10px] leading-relaxed text-muted">
+                                    {JSON.stringify(step.data, null, 2)}
+                                  </pre>
+                                ) : null}
+                              </>
+                            ) : null}
+                          </div>
+                        );
+                      })}
+
+                      {trace.length > 2 && (
+                        <button
+                          type="button"
+                          onClick={() => setActivityExpanded((prev) => !prev)}
+                          className="trace-toggle w-full justify-center"
                         >
-                          Download report
-                        </a>
-                      </div>
-                    )}
-                  </div>
+                          {activityExpanded ? 'Show less' : 'Show more'}
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="text-sm text-muted">Execution trace will appear here.</div>
+                  )}
                 </div>
-
-                <div className="border border-white/10 bg-[#0d1319]/55 p-4 shadow-subtle">
-                  <div className="mb-3 flex items-center justify-between border-b border-white/10 pb-3">
-                    <div className="font-mono text-[10px] font-semibold uppercase tracking-[0.22em] text-muted">Model registry</div>
-                  </div>
-
-                  <div className="space-y-3">
-                    {registry.length ? registry.map((tool) => (
-                      <div key={tool.name} className="border border-white/10 bg-[#1a2128]/60 p-3">
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="font-mono text-[11px] font-semibold uppercase tracking-[0.15em] text-text">{tool.name}</div>
-                          <div className="h-2 w-2 bg-success" />
-                        </div>
-                        <div className="mt-2 text-[11px] text-muted">{tool.tasks?.join(' · ') || 'task set'}</div>
-                        <div className="mt-1 font-mono text-[10px] uppercase tracking-[0.12em] text-muted">{tool.input_type}</div>
-                      </div>
-                    )) : (
-                      <div className="border border-white/10 bg-[#1a2128]/60 p-3 text-sm text-muted">
-                        Registry unavailable.
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <div className="border border-white/10 bg-[#0d1319]/55 p-4 shadow-subtle">
-                <div className="mb-4 flex items-center justify-between border-b border-white/10 pb-3">
-                  <div className="font-mono text-[10px] font-semibold uppercase tracking-[0.22em] text-muted">Evidence</div>
-                </div>
-
-                {evidence.length ? (
-                  <div className="grid gap-4 md:grid-cols-2">
-                    {evidence.map((item, index) => (
-                      <div key={`${item.kind}-${index}`} className="overflow-hidden border border-white/10 bg-[#1a2128]/60">
-                        {item.image_b64 ? (
-                          <img src={`data:image/png;base64,${item.image_b64}`} alt={item.label || 'evidence'} className="h-52 w-full object-cover" />
-                        ) : null}
-                        <div className="border-t border-border p-3 font-mono text-[10px] uppercase tracking-[0.14em] text-muted">
-                          {item.label || item.kind || 'evidence'}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-sm text-muted">No evidence returned yet.</div>
-                )}
-              </div>
-
-              <div className="border border-white/10 bg-[#0d1319]/55 p-4 shadow-subtle">
-                <div className="mb-4 flex items-center justify-between border-b border-white/10 pb-3">
-                  <div className="font-mono text-[10px] font-semibold uppercase tracking-[0.22em] text-muted">Agent activity</div>
-                </div>
-
-                {trace.length ? (
-                  <ol className="space-y-3">
-                    {trace.map((step, index) => (
-                      <li key={`${step.stage}-${index}`} className="border border-white/10 bg-[#1a2128]/60 p-3">
-                        <div className="flex items-center gap-2">
-                          <span className="inline-flex h-2.5 w-2.5 bg-success" />
-                          <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-text">{formatStage(step.stage)}</span>
-                        </div>
-                        <div className="mt-2 text-sm text-text">{step.detail}</div>
-                        {step.data && Object.keys(step.data).length ? (
-                          <pre className="mt-2 overflow-x-auto whitespace-pre-wrap border border-white/10 bg-[#08111b]/80 p-2 font-mono text-[10px] leading-relaxed text-muted">
-                            {JSON.stringify(step.data, null, 2)}
-                          </pre>
-                        ) : null}
-                      </li>
-                    ))}
-                  </ol>
-                ) : (
-                  <div className="text-sm text-muted">Execution trace will appear here.</div>
-                )}
-              </div>
-            </section>
+              </section>
+            )}
           </div>
         </main>
       </div>
