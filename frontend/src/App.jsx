@@ -136,7 +136,7 @@ function App() {
 
   const evidence = result?.evidence || [];
   const trace = result?.trace || [];
-  const previewTrace = trace.slice(0, activityExpanded ? trace.length : 3);
+  const previewTrace = activityExpanded ? trace : trace.slice(0, 6);
   const confNum = result?.confidence !== undefined && result?.confidence !== null
     ? Math.round(Number(result.confidence) * 100) : null;
   const doneStages = new Set(trace.map((s) => s.stage));
@@ -268,9 +268,9 @@ function App() {
 
         {/* ============ DASHBOARD ============ */}
         {dashboard && (
-          <main className="grid grid-cols-1 gap-3 p-3 sm:p-4 xl:h-[calc(100vh-104px)] xl:grid-cols-[300px_minmax(0,1fr)_340px]">
+          <main className="grid grid-cols-1 items-start gap-3 p-3 sm:p-4 xl:grid-cols-[300px_minmax(0,1fr)_340px]">
             {/* LEFT — INPUT */}
-            <aside className="flex flex-col gap-3 overflow-y-auto border border-white/10 bg-[#0d1319]/55 p-3 shadow-subtle">
+            <aside className="flex flex-col gap-3 border border-white/10 bg-[#0d1319]/55 p-3 shadow-subtle">
               <div className="flex items-center justify-between border-b border-white/10 pb-2">
                 <div className="font-mono text-[10px] font-semibold uppercase tracking-[0.22em] text-muted">Input</div>
                 <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted">{uploadCount}/2</div>
@@ -321,7 +321,7 @@ function App() {
             </aside>
 
             {/* CENTER — ANALYSIS + EVIDENCE */}
-            <section className="flex min-h-0 flex-col gap-3">
+            <section className="flex flex-col gap-3">
               <div className="border border-white/10 bg-[#0d1319]/55 p-4 shadow-subtle">
                 <div className="mb-3 flex items-center justify-between border-b border-white/10 pb-3">
                   <div className="ui-label font-mono text-[10px] font-semibold uppercase tracking-[0.22em]">Analysis</div>
@@ -369,33 +369,39 @@ function App() {
               </div>
 
               {/* EVIDENCE — kept text-based on purpose */}
-              <div className="flex min-h-0 flex-1 flex-col border border-white/10 bg-[#0d1319]/55 p-4 shadow-subtle">
+              <div className="flex flex-col border border-white/10 bg-[#0d1319]/55 p-4 shadow-subtle">
                 <div className="mb-3 flex items-center justify-between border-b border-white/10 pb-3">
                   <div className="font-mono text-[10px] font-semibold uppercase tracking-[0.22em] text-muted">Evidence</div>
                   <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted">
                     {loading ? 'Rendering' : result ? `${evidence.length} artifacts · ${uploadCount || 1} input scene` : '—'}
                   </div>
                 </div>
-                <div className="grid-bg flex min-h-[120px] flex-1 items-start overflow-y-auto p-4 font-mono text-[12px] leading-relaxed text-muted">
+                <div className="grid-bg min-h-[120px] p-4 font-mono text-sm leading-relaxed">
                   {loading ? (
-                    <span className="scan-text">◇ Awaiting artifacts…</span>
+                    <span className="scan-text text-muted">◇ Awaiting artifacts…</span>
                   ) : evidence.length ? (
-                    <div className="space-y-1">
+                    <div className="space-y-2 text-text">
                       {evidence.map((e, i) => (
-                        <div key={i}>◇ {(e.kind || 'evidence').toUpperCase()} · {e.label || ''} {e.data ? JSON.stringify(e.data) : ''}</div>
+                        <div key={i}>
+                          ◇ {(e.kind || 'evidence').toUpperCase()}{e.label ? ` · ${e.label}` : ''}
+                          {e.data ? <span className="text-muted"> {JSON.stringify(e.data)}</span> : null}
+                        </div>
                       ))}
                     </div>
                   ) : result ? (
-                    <span>◇ N_EVIDENCE = 0 · {(result.task || '').toUpperCase()} RETURNS TEXT ONLY</span>
+                    <div className="space-y-3">
+                      <div className="text-muted">◇ N_EVIDENCE = 0 · {(result.task || '').toUpperCase()} RETURNS TEXT ONLY</div>
+                      <div className="whitespace-pre-wrap text-text">{result.answer}</div>
+                    </div>
                   ) : (
-                    <span>◇ No evidence yet</span>
+                    <span className="text-muted">◇ No evidence yet</span>
                   )}
                 </div>
               </div>
             </section>
 
             {/* RIGHT — REGISTRY + METRICS + AGENT ACTIVITY */}
-            <aside className="flex min-h-0 flex-col gap-3 overflow-y-auto">
+            <aside className="flex flex-col gap-3">
               {/* Registry */}
               <div className="border border-white/10 bg-[#0d1319]/55 p-3 shadow-subtle">
                 <div className="mb-2 flex items-center justify-between border-b border-white/10 pb-2">
@@ -439,7 +445,7 @@ function App() {
               </div>
 
               {/* Agent activity */}
-              <div className="flex min-h-0 flex-1 flex-col border border-white/10 bg-[#0d1319]/55 p-3 shadow-subtle">
+              <div className="flex flex-col border border-white/10 bg-[#0d1319]/55 p-3 shadow-subtle">
                 <div className="mb-3 flex items-center justify-between border-b border-white/10 pb-2">
                   <div className="ui-label font-mono text-[10px] font-semibold uppercase tracking-[0.22em]">Agent activity</div>
                   <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted">{loading ? '…/5' : `${stagesDone}/5`} stages</div>
@@ -458,7 +464,7 @@ function App() {
                   })}
                 </div>
 
-                <div className="min-h-0 flex-1 space-y-2 overflow-y-auto">
+                <div className="space-y-2">
                   {loading ? (
                     <>
                       <div className="skeleton h-12 w-full" />
@@ -493,7 +499,7 @@ function App() {
                           </div>
                         );
                       })}
-                      {trace.length > 3 && (
+                      {trace.length > 6 && (
                         <button type="button" onClick={() => setActivityExpanded((p) => !p)} className="trace-toggle w-full justify-center">
                           {activityExpanded ? 'Show less' : 'Show more'}
                         </button>
