@@ -196,9 +196,9 @@ function App() {
           </div>
         </header>
 
-        <main className={`p-3 sm:p-4 lg:p-5 ${!hasResults ? 'flex items-center justify-center' : ''}`}>
-          <div className={`grid min-h-[calc(100vh-120px)] w-full gap-4 ${hasResults ? 'grid-cols-1 xl:grid-cols-[335px_minmax(0,1fr)]' : 'grid-cols-1'}`}>
-            <aside className={`flex flex-col gap-4 border border-white/10 bg-[#0d1319]/55 p-3 shadow-subtle ${!hasResults ? 'mx-auto w-full max-w-[760px]' : ''}`}>
+        <main className="p-3 sm:p-4 lg:p-5">
+          <div className="grid min-h-[calc(100vh-120px)] w-full gap-4 grid-cols-1 xl:grid-cols-[335px_minmax(0,1fr)]">
+            <aside className="flex flex-col gap-4 border border-white/10 bg-[#0d1319]/55 p-3 shadow-subtle">
               <div className="flex items-center justify-between border-b border-border pb-3">
                 <div className="font-mono text-[10px] font-semibold uppercase tracking-[0.22em] text-muted">Input</div>
                 <div className="flex items-center gap-2">
@@ -301,7 +301,7 @@ function App() {
               </div>
             </aside>
 
-            {hasResults && (
+            {(
               <section className="flex flex-col gap-4">
                 <div className="grid gap-4 lg:grid-cols-[1.3fr_0.7fr]">
                   <div className="border border-white/10 bg-[#0d1319]/55 p-4 shadow-subtle">
