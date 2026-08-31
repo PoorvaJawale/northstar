@@ -64,7 +64,7 @@ class GeoChatTool(Tool):
         if task == "single_caption":
             prompt = self._PROMPTS["single_caption"]
         elif task == "single_grounding":
-            prompt = self._PROMPTS["single_grounding"].format(q=query)
+            prompt = f"[refer] {self._referring_expression(query)}"
         else:  # single_vqa
             prompt = query
 
@@ -87,15 +87,34 @@ class GeoChatTool(Tool):
                           tool_name=self.name, params_used=params)
 
     @staticmethod
-    def _parse_box(text: str, w: int, h: int):
-        """Best-effort parse of GeoChat's {<x><y><x><y>|<angle>} grounding output.
-        GeoChat emits coords on a 0-100 grid; scale to pixels. Returns
-        [x0,y0,x1,y1] or None if nothing parseable (then we return text only)."""
+    def _referring_expression(query: str) -> str:
+        """GeoChat grounds a noun phrase, not an instruction. Turn e.g.
+        'Highlight the roundabout' into 'the roundabout' so the model outputs a
+        box instead of a description. Falls back to the original query."""
         import re
-        nums = re.findall(r"\d+(?:\.\d+)?", text.replace("|", " "))
-        if len(nums) < 4:
-            return None
-        x0, y0, x1, y1 = (float(v) for v in nums[:4])
+        q = query.strip().rstrip(".?!")
+        q = re.sub(
+            r"(?i)^\s*(please\s+)?(highlight|show(\s+me)?|mark|find|locate|detect|"
+            r"identify|point\s+(to|out)|where(\s+is|'s)?|give\s+(me\s+)?the\s+"
+            r"(bounding\s+)?box\s+(of|for)?)\s+", "", q)
+        q = re.sub(r"(?i)\s+(referred\s+to\s+in\s+the\s+query|in\s+(the|this)\s+image)\s*$", "", q)
+        return q.strip() or query.strip()
+
+    @staticmethod
+    def _parse_box(text: str, w: int, h: int):
+        """Parse GeoChat's {<x><y><x><y>|<angle>} grounding output (0-100 grid)
+        and scale to pixels. Prefers the bracketed format; falls back to the
+        first four numbers. Returns [x0,y0,x1,y1] or None (then we show text)."""
+        import re
+        m = re.search(r"<\s*([\d.]+)\s*>\s*<\s*([\d.]+)\s*>\s*<\s*([\d.]+)\s*>\s*<\s*([\d.]+)\s*>", text)
+        if m:
+            vals = [float(x) for x in m.groups()]
+        else:
+            nums = re.findall(r"\d+(?:\.\d+)?", text.replace("|", " "))
+            if len(nums) < 4:
+                return None
+            vals = [float(v) for v in nums[:4]]
+        x0, y0, x1, y1 = vals
         sx, sy = w / 100.0, h / 100.0
         box = [x0 * sx, y0 * sy, x1 * sx, y1 * sy]
         if box[2] <= box[0] or box[3] <= box[1]:
