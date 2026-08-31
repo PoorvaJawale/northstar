@@ -11,6 +11,7 @@ the trace as `fallback` so you never mistake it for the real router.
 """
 from __future__ import annotations
 import json
+import re
 import urllib.request
 import urllib.error
 
@@ -32,10 +33,34 @@ TASKS_BY_INPUT: dict[InputType, list[Task]] = {
 
 _SYSTEM = (
     "You are a task router for a remote-sensing image assistant. "
-    "Given a user query and the list of ALLOWED tasks, choose the single best task. "
-    "Reply with STRICT JSON only: {\"task\": \"<one of the allowed>\", \"reason\": \"...\"}. "
+    "Choose EXACTLY ONE task from the ALLOWED list for the user's query.\n"
+    "Task meanings:\n"
+    "- single_grounding: the user wants a specific object or region LOCATED / MARKED on the "
+    "image. Verbs: highlight, mark, locate, outline, circle, pinpoint, point to, show where, "
+    "where is/are, find the <object>, box/segment the <object>.\n"
+    "- single_caption: the user wants a general DESCRIPTION of the whole scene "
+    "(describe, summarise, what does this image show).\n"
+    "- single_vqa: a specific factual QUESTION about the image "
+    "(is there..., how many..., what is the..., yes/no).\n"
+    "- change_vqa / change_map: what changed between two dated images.\n"
+    "- cross_modal: combine the optical and SAR images.\n"
+    "If the query names an object to point out or mark, prefer single_grounding over "
+    "single_caption. Reply with STRICT JSON only: "
+    "{\"task\": \"<one of the allowed>\", \"reason\": \"...\"}. "
     "Do not invent tasks outside the allowed list."
 )
+
+# Deterministic guardrail: an explicit "locate/highlight <object>" instruction is a
+# grounding request. If it's present we route to grounding even when the LLM picked
+# caption/VQA — grounding is the task that produces the required visual evidence.
+_GROUNDING_RE = re.compile(
+    r"(?i)\b(highlight|mark|locate|outline|circle|pinpoint|delineate|"
+    r"point\s+(to|out)|show\s+(me\s+)?(where|the)|where\s+(is|are)|"
+    r"find\s+the|box\s+the|segment\s+the)\b")
+
+
+def _looks_like_grounding(query: str) -> bool:
+    return bool(_GROUNDING_RE.search(query or ""))
 
 
 def classify(query: str, input_type: InputType) -> tuple[Task, str, str]:
@@ -44,16 +69,26 @@ def classify(query: str, input_type: InputType) -> tuple[Task, str, str]:
     if not allowed:
         raise ValueError(f"No tasks possible for input_type={input_type}")
 
+    task: Task | None = None
+    method, note = "fallback", "LLM disabled; dev fallback classifier"
+
     if config.USE_LLM_INTENT:
         try:
-            task = _llm_classify(query, allowed)
-            if task in allowed:
-                return task, "llm", f"LLM ({config.OLLAMA_MODEL}) classified query"
+            t = _llm_classify(query, allowed)
+            if t in allowed:
+                task, method, note = t, "llm", f"LLM ({config.OLLAMA_MODEL}) classified query"
         except Exception as e:  # LLM unreachable -> degrade, don't crash
-            note = f"LLM unavailable ({e.__class__.__name__}); used fallback"
-            return _fallback(query, allowed), "fallback", note
+            task = _fallback(query, allowed)
+            method, note = "fallback", f"LLM unavailable ({e.__class__.__name__}); used fallback"
 
-    return _fallback(query, allowed), "fallback", "LLM disabled; dev fallback classifier"
+    if task is None:
+        task = _fallback(query, allowed)
+
+    # guardrail: explicit locate/highlight verbs must ground (produces visual evidence)
+    if "single_grounding" in allowed and task != "single_grounding" and _looks_like_grounding(query):
+        task, note = "single_grounding", f"{note}; grounding-verb override"
+
+    return task, method, note
 
 
 def _llm_classify(query: str, allowed: list[Task]) -> Task:
