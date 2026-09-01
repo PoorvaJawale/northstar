@@ -155,14 +155,27 @@ input::placeholder {
 }
 @keyframes dotpulse { 0%,100% { opacity: 0.25; } 50% { opacity: 1; } }
 
-/* agent-activity stepper dots */
-.step-dot {
-  width: 10px; height: 10px; display: inline-block;
-  border: 1px solid rgba(255, 255, 255, 0.25);
+/* agent-activity stepper boxes */
+.step-box {
+  width: 22px; height: 22px; display: inline-flex;
+  align-items: center; justify-content: center;
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.72);
+  transition: all 180ms ease;
 }
-.step-dot.step-done { background: #7fc3ff; border-color: #7fc3ff; }
-.step-dot.step-active { background: rgba(127, 195, 255, 0.35); border-color: #7fc3ff; animation: dotpulse 0.9s ease-in-out infinite; }
-.step-dot.step-pending { background: transparent; }
+.step-box-done {
+  color: #7fc3ff;
+  filter: drop-shadow(0 0 10px rgba(127, 195, 255, 0.55));
+}
+.step-box-active {
+  color: #dfeeff;
+  filter: drop-shadow(0 0 10px rgba(127, 195, 255, 0.7));
+  animation: dotpulse 0.9s ease-in-out infinite;
+}
+.step-box-pending {
+  color: rgba(255, 255, 255, 0.35);
+}
 
 /* task / tool pills */
 .pill {

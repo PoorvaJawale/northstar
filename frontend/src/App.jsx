@@ -9,8 +9,108 @@ const examplePrompts = [
 ];
 
 const STAGES = ['inspect', 'classify', 'select', 'execute', 'fuse'];
+const BRAND_ICON = 'https://cdn-icons-png.flaticon.com/512/10479/10479796.png';
 const formatStage = (stage) =>
   stage?.replace(/_/g, ' ').replace(/\b\w/g, (m) => m.toUpperCase()) || 'STEP';
+
+function BrandMark({ className = 'h-6 w-6' }) {
+  return <img src={BRAND_ICON} alt="SatQuery AI" className={`${className} object-contain drop-shadow-[0_0_12px_rgba(127,195,255,0.65)]`} draggable="false" />;
+}
+
+function StatusIcon({ type = 'satellite', className = 'h-3.5 w-3.5' }) {
+  const shared = { className: `${className} text-[#7fc3ff]`, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: '1.8', strokeLinecap: 'round', strokeLinejoin: 'round' };
+
+  switch (type) {
+    case 'image':
+      return (
+        <svg {...shared}>
+          <path d="M12 16V4" />
+          <path d="M8.5 7.5L12 4l3.5 3.5" />
+          <path d="M4 14.5v3.5a1.5 1.5 0 0 0 1.5 1.5h13A1.5 1.5 0 0 0 20 18v-3.5" />
+        </svg>
+      );
+    case 'model':
+      return (
+        <svg {...shared}>
+          <path d="M6 8h12M6 12h12M6 16h8" />
+          <path d="M19 7.5v9" />
+        </svg>
+      );
+    case 'radar':
+      return (
+        <svg {...shared}>
+          <path d="M4 15c2-4 5-6 8-6s6 2 8 6" />
+          <path d="M7 15a5 5 0 0 1 10 0" />
+          <circle cx="12" cy="15" r="1.6" />
+        </svg>
+      );
+    case 'spark':
+      return (
+        <svg {...shared}>
+          <path d="M12 2v6M12 16v6M4.93 4.93l4.24 4.24M14.83 14.83l4.24 4.24M2 12h6M16 12h6M4.93 19.07l4.24-4.24M14.83 9.17l4.24-4.24" />
+        </svg>
+      );
+    case 'inspect':
+      return (
+        <svg {...shared}>
+          <circle cx="11" cy="11" r="5.5" />
+          <path d="M16 16l5 5" />
+          <path d="M8.5 11h5" />
+          <path d="M11 8.5v5" />
+        </svg>
+      );
+    case 'classify':
+      return (
+        <svg {...shared}>
+          <path d="M4 7.5h5v5H4zM15 7.5h5v5h-5zM9.5 11.5h5V18h-5zM4 13.5h5v5H4zM15 13.5h5v5h-5z" />
+        </svg>
+      );
+    case 'select':
+      return (
+        <svg {...shared}>
+          <rect x="4" y="5" width="16" height="14" rx="2" />
+          <path d="M8 8.5h8M8 12h8M8 15.5h5" />
+          <path d="M8.5 3.5v2M15.5 3.5v2" />
+        </svg>
+      );
+    case 'execute':
+      return (
+        <svg {...shared}>
+          <path d="M4 6.5h16v11H4z" />
+          <path d="M10 9.5l6 2.5-6 2.5v-5z" />
+        </svg>
+      );
+    case 'fuse':
+      return (
+        <svg {...shared}>
+          <path d="M6 8.5a3 3 0 1 1 0 6" />
+          <path d="M18 8.5a3 3 0 1 0 0 6" />
+          <path d="M9 8.5h6v7H9z" />
+          <path d="M12 6v12" />
+        </svg>
+      );
+    default:
+      return (
+        <svg {...shared}>
+          <path d="M3 13.5a9 9 0 0 1 18 0" />
+          <path d="M7 13.5a5 5 0 0 1 10 0" />
+          <circle cx="12" cy="13.5" r="2" />
+          <path d="M12 2v3M12 21v3" />
+        </svg>
+      );
+  }
+}
+
+function StageIcon({ stage, className = 'h-3.5 w-3.5' }) {
+  const map = {
+    inspect: 'inspect',
+    classify: 'classify',
+    select: 'select',
+    execute: 'execute',
+    fuse: 'fuse',
+  };
+  return <StatusIcon type={map[stage] || 'spark'} className={className} />;
+}
 
 /* Radial confidence gauge (pure SVG, no deps). */
 function RadialGauge({ pct, loading }) {
@@ -172,11 +272,11 @@ function App() {
 
   return (
     <div className="min-h-screen px-2 py-3 text-text sm:px-4 lg:px-6">
-      <div className="mx-auto max-w-[1600px] overflow-hidden border border-white/10 bg-[#0a0f14]/55 shadow-[0_18px_50px_rgba(0,0,0,0.45)] backdrop-blur-sm">
+      <div className="mx-auto max-w-[1600px] overflow-hidden border border-white/10 bg-[rgba(10,15,20,0.22)] shadow-[0_18px_50px_rgba(0,0,0,0.38)] backdrop-blur-2xl [backdrop-filter:blur(22px)_saturate(1.4)]">
         {/* HEADER */}
         <header className="flex items-center justify-between border-b border-white/10 bg-[#11171d]/70 px-3 py-2 sm:px-4">
           <div className="flex items-center gap-2">
-            <span className="inline-block h-2 w-2 bg-[#7fc3ff]" />
+            <BrandMark className="h-7 w-7" />
             <span className="text-sm font-semibold text-text">SatQuery&nbsp;AI</span>
             <span className="hidden font-mono text-[10px] uppercase tracking-[0.18em] text-muted sm:inline">PS 26167 · ISRO</span>
           </div>
@@ -187,7 +287,7 @@ function App() {
           </div>
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-2 border border-white/10 bg-[#1a2128]/70 px-2 py-1 text-[9px] uppercase tracking-[0.18em] text-muted">
-              <span className="inline-block h-1.5 w-1.5 bg-[#7fc3ff]" />{status}
+              <StatusIcon type="satellite" className="h-3 w-3" />{status}
             </div>
             <button type="button" onClick={loadRegistry}
               className="border border-white/10 bg-[#1a2128]/70 px-2.5 py-1 text-[9px] uppercase tracking-[0.12em] text-muted hover:border-white/30 hover:text-text">
@@ -213,6 +313,9 @@ function App() {
 
               <label className="group mt-5 flex min-h-[190px] cursor-pointer flex-col items-center justify-center border border-dashed border-border bg-[#12181f]/50 px-4 text-center hover:border-white/30">
                 <input ref={fileInputRef} type="file" accept=".tif,.tiff,.png,.jpg,.jpeg" multiple className="hidden" onChange={handleFileChange} />
+                <div className="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-full border border-white/40 bg-transparent text-white">
+                  <StatusIcon type="image" className="h-5 w-5" />
+                </div>
                 <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted">Add imagery</span>
                 <span className="mt-3 text-lg text-text">Drop or browse 1–2 scenes</span>
                 <div className="mt-4 flex gap-2">
@@ -235,11 +338,15 @@ function App() {
 
               <div className="mt-5 grid gap-3 sm:grid-cols-2">
                 <div className="border border-white/10 bg-[#12181f]/50 p-3">
-                  <div className="ui-label font-mono text-[10px] uppercase tracking-[0.18em]">Task / mode</div>
-                  <div className="mt-2 flex items-center gap-2 text-sm text-text"><span className="model-status">■</span> Detected on run</div>
+                  <div className="ui-label mb-2 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.18em]">
+                    <StatusIcon type="spark" className="h-3.5 w-3.5" /> Task / mode
+                  </div>
+                  <div className="mt-2 flex items-center gap-2 text-sm text-text"><StatusIcon type="radar" className="h-3.5 w-3.5" /> Detected on run</div>
                 </div>
                 <div className="border border-white/10 bg-[#12181f]/50 p-3">
-                  <div className="ui-label font-mono text-[10px] uppercase tracking-[0.18em]">Model</div>
+                  <div className="ui-label mb-2 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.18em]">
+                    <StatusIcon type="model" className="h-3.5 w-3.5" /> Model
+                  </div>
                   <div className="mt-2 text-sm text-text">Agent-selected · {onlineCount} online</div>
                 </div>
               </div>
@@ -338,7 +445,9 @@ function App() {
                         <div className="skeleton h-3 w-[64%]" />
                       </div>
                     ) : (
-                      <div className="data-value mt-3 text-lg leading-relaxed">{result?.answer || 'Awaiting analysis output.'}</div>
+                      <div className="data-value mt-3 text-[1.5rem] leading-[1.7] tracking-[0.01em]" style={{ fontFamily: '"PT Serif", Georgia, serif' }}>
+                        {result?.answer || 'Awaiting analysis output.'}
+                      </div>
                     )}
                   </div>
                   <div className="flex items-center justify-center border border-white/10 bg-[#1a2128]/60 p-3">
@@ -418,7 +527,7 @@ function App() {
                     <div key={tool.name} className="border border-white/10 bg-[#1a2128]/60 p-2.5">
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2">
-                          <span className="model-status text-[#7fc3ff]">■</span>
+                          <StatusIcon type="model" className="h-3.5 w-3.5" />
                           <span className="font-mono text-[11px] font-semibold tracking-[0.08em] text-text">{tool.name}</span>
                         </div>
                         <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-muted">{tool.input_type}</span>
@@ -459,10 +568,12 @@ function App() {
                 <div className="mb-3 grid grid-cols-5 gap-1">
                   {STAGES.map((s) => {
                     const done = doneStages.has(s);
-                    const cls = done ? 'step-done' : loading ? 'step-active' : 'step-pending';
+                    const cls = done ? 'step-box step-box-done' : loading ? 'step-box step-box-active' : 'step-box step-box-pending';
                     return (
                       <div key={s} className="flex flex-col items-center gap-1">
-                        <span className={`step-dot ${cls}`} />
+                        <div className={cls} aria-label={s}>
+                          <StageIcon stage={s} className="h-4 w-4" />
+                        </div>
                         <span className="font-mono text-[8px] uppercase tracking-[0.1em] text-muted">{s}</span>
                       </div>
                     );
@@ -483,7 +594,7 @@ function App() {
                           <div key={`${step.stage}-${index}`} className="border border-white/10 bg-[#1a2128]/60 p-2.5">
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-2">
-                                <span className="model-status text-[11px] text-[#7fc3ff]">■</span>
+                                <StageIcon stage={step.stage} className="h-3.5 w-3.5" />
                                 <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text">{formatStage(step.stage)}</span>
                               </div>
                               <span className="font-mono text-[9px] text-muted">{index + 1}/{trace.length}</span>
