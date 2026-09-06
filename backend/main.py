@@ -5,26 +5,34 @@ Endpoints:
   GET  /api/health           -> status + whether running in MOCK mode
   GET  /api/registry         -> the live tool registry (for the UI + demo)
   POST /api/query            -> image(s) + text query -> answer + evidence + trace
+  POST /api/query/stream     -> same, as a live SSE feed of what the agent is doing
   GET  /api/report/{id}      -> download the HTML evidence report
+  GET  /api/report/{id}/pdf  -> download the same report as a PDF
   GET  /                     -> serves the frontend
 
 Run:  uvicorn backend.main:app --reload
 """
 from __future__ import annotations
+import asyncio
+import json
 import shutil
+import threading
+import traceback
 import uuid
 from pathlib import Path
+from typing import Any, AsyncIterator
 
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 from . import config
 from .agent.controller import Controller
 from .agent.registry import Registry
 from .geo.io import read_image
-from .report.builder import build_html_report
+from .report.builder import build_report
+from .schemas import TraceStep
 
 app = FastAPI(title="SatQuery AI", version="0.1.0")
 app.add_middleware(CORSMiddleware, allow_origins=config.CORS_ORIGINS,
@@ -58,8 +66,9 @@ def reload_registry():
     return {"reloaded": True, "tools": list(_registry.specs.keys())}
 
 
-@app.post("/api/query")
-async def query(text: str = Form(...), images: list[UploadFile] = File(...)):
+def _ingest(images: list[UploadFile]):
+    """Validate + persist the uploads and decode them. Shared by both query
+    endpoints so the blocking and streaming paths behave identically."""
     if not images:
         raise HTTPException(400, "At least one image is required.")
     if len(images) > 2:
@@ -78,19 +87,139 @@ async def query(text: str = Form(...), images: list[UploadFile] = File(...)):
             arrays.append(arr)
     except Exception as e:
         raise HTTPException(400, f"Failed to read image: {e}")
+    return metas, arrays
 
+
+def _attach_report(resp) -> None:
+    """Render the evidence report onto a finished response. A report failure is
+    logged and swallowed: the answer the user waited for is worth far more than
+    the attachment, and losing it would look like the whole run failed."""
+    if not resp.ok:
+        return
+    resp.trace.append(TraceStep(stage="report",
+        detail="rendered the HTML and PDF evidence report",
+        data={"formats": ["html", "pdf"]}))
+    try:
+        resp.report_id = build_report(resp)
+    except Exception:
+        traceback.print_exc()
+        resp.trace[-1] = TraceStep(stage="report",
+            detail="the evidence report could not be rendered",
+            data={"error": "see the server log"})
+
+
+@app.post("/api/query")
+async def query(text: str = Form(...), images: list[UploadFile] = File(...)):
+    metas, arrays = _ingest(images)
     resp = _controller.run(text, metas, arrays)
-    if resp.ok:
-        resp.report_id = build_html_report(resp)
+    _attach_report(resp)
     return resp.model_dump()
 
 
-@app.get("/api/report/{report_id}")
-def report(report_id: str):
-    path = Path(config.REPORT_DIR) / f"{report_id}.html"
+# ---- live SSE feed of the agent's execution ------------------------------
+def _sse(event: dict[str, Any]) -> str:
+    return f"data: {json.dumps(event)}\n\n"
+
+
+def _pipeline_events(text: str, metas, arrays):
+    """The controller's events, with the report build tacked on the end.
+    Runs on a worker thread (see `_stream_events`) — it is fully blocking."""
+    for event in _controller.stream(text, metas, arrays):
+        if event["type"] != "result":
+            yield event
+            continue
+        resp = event["response"]
+        if resp.ok:
+            yield {"type": "stage", "stage": "report", "status": "start",
+                   "label": "Building the evidence report"}
+            _attach_report(resp)
+            yield {"type": "stage", "stage": "report", "status": "done",
+                   "step": {"stage": "report",
+                            "detail": "evidence report ready" if resp.report_id
+                                      else "the evidence report could not be rendered",
+                            "data": {"report_id": resp.report_id,
+                                     "formats": _report_formats(resp.report_id)
+                                                if resp.report_id else []}}}
+        yield {"type": "result", "response": resp.model_dump()}
+
+
+async def _stream_events(text: str, metas, arrays) -> AsyncIterator[str]:
+    """Drain the blocking pipeline from a worker thread so the event loop stays
+    free to flush each frame the moment it is produced."""
+    loop = asyncio.get_running_loop()
+    channel: asyncio.Queue = asyncio.Queue()
+    _END = object()
+
+    def work() -> None:
+        try:
+            for event in _pipeline_events(text, metas, arrays):
+                loop.call_soon_threadsafe(channel.put_nowait, event)
+        except Exception as e:                       # never leave the UI hanging
+            traceback.print_exc()                    # the console gets the detail
+            loop.call_soon_threadsafe(channel.put_nowait, {
+                "type": "error", "message": f"{e.__class__.__name__}: {e}"})
+        finally:
+            loop.call_soon_threadsafe(channel.put_nowait, _END)
+
+    threading.Thread(target=work, name="satquery-pipeline", daemon=True).start()
+
+    yield _sse({"type": "open", "message": "Agent started"})
+    while True:
+        try:
+            event = await asyncio.wait_for(channel.get(), timeout=10)
+        except asyncio.TimeoutError:
+            yield ": keep-alive\n\n"     # long model load: hold the connection
+            continue
+        if event is _END:
+            break
+        yield _sse(event)
+    yield _sse({"type": "done"})
+
+
+@app.post("/api/query/stream")
+async def query_stream(text: str = Form(...), images: list[UploadFile] = File(...)):
+    """Same contract as /api/query, delivered as Server-Sent Events: one frame
+    per stage boundary plus the tool's own progress, then the final result."""
+    metas, arrays = _ingest(images)
+    return StreamingResponse(
+        _stream_events(text, metas, arrays),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache, no-transform",
+                 "Connection": "keep-alive",
+                 "X-Accel-Buffering": "no"},
+    )
+
+
+_REPORT_TYPES = {"html": "text/html", "pdf": "application/pdf"}
+
+
+def _report_formats(report_id: str) -> list[str]:
+    """Which artifacts actually exist on disk for this report."""
+    return [ext for ext in _REPORT_TYPES
+            if (Path(config.REPORT_DIR) / f"{report_id}.{ext}").exists()]
+
+
+def _send_report(report_id: str, ext: str, download: bool) -> FileResponse:
+    if "/" in report_id or "\\" in report_id or "." in report_id:
+        raise HTTPException(400, "Bad report id")
+    path = Path(config.REPORT_DIR) / f"{report_id}.{ext}"
     if not path.exists():
-        raise HTTPException(404, "Report not found")
-    return FileResponse(path, media_type="text/html", filename=f"satquery_{report_id}.html")
+        raise HTTPException(404, f"No {ext.upper()} report for {report_id}")
+    if download:
+        return FileResponse(path, media_type=_REPORT_TYPES[ext],
+                            filename=f"satquery_{report_id}.{ext}")
+    # inline: let the browser render it in a tab instead of downloading
+    return FileResponse(path, media_type=_REPORT_TYPES[ext])
+
+
+@app.get("/api/report/{report_id}")
+def report(report_id: str, download: bool = False):
+    return _send_report(report_id, "html", download)
+
+
+@app.get("/api/report/{report_id}/pdf")
+def report_pdf(report_id: str, download: bool = True):
+    return _send_report(report_id, "pdf", download)
 
 
 # ---- serve the frontend (static single-page app) ------------------------

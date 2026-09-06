@@ -9,11 +9,15 @@ to registry.yaml — with ZERO changes to the controller. That is the PS's
 """
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import Any, Callable, Optional
 
 import numpy as np
 
 from ..schemas import ToolResult, Task
+
+#: (message, data) -> None. The controller installs one of these while a tool
+#: runs so the UI can show what the model is doing, live.
+ProgressFn = Callable[[str, dict], None]
 
 
 class Tool(ABC):
@@ -23,6 +27,18 @@ class Tool(ABC):
     name: str = "base"
     #: tasks this tool can answer
     tasks: list[Task] = []
+
+    #: set by the controller for the duration of one run (see `emit`)
+    _progress: Optional[ProgressFn] = None
+
+    def set_progress(self, fn: Optional[ProgressFn]) -> None:
+        self._progress = fn
+
+    def emit(self, message: str, **data: Any) -> None:
+        """Report what this tool is doing right now. No-op when nobody listens,
+        so tools stay usable outside the agent (scripts, tests, notebooks)."""
+        if self._progress is not None:
+            self._progress(message, data)
 
     @abstractmethod
     def run(

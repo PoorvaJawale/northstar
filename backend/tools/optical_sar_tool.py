@@ -52,11 +52,13 @@ class OpticalSarTool(Tool):
         opt = images[0]
         h, w = opt.shape[0], opt.shape[1]
         targets = params.get("target_classes", ["built_up", "water"])
+        self.emit("[MOCK] Co-registering the optical and SAR scenes")
         # synthetic: water in lower band, built-up scattered upper-left
         yy, xx = np.mgrid[0:h, 0:w]
         water = (yy > h * 0.7).astype(float)
         built = (((xx < w * 0.4) & (yy < h * 0.4))).astype(float)
         mask = np.clip(water + built * 0.6, 0, 1)
+        self.emit("Fusing the two modalities", targets=targets)
         ev = Evidence(kind="overlay", label="built-up (teal) + water (blue)",
                       image_b64=render_mask(opt, mask),
                       data={"targets": targets})

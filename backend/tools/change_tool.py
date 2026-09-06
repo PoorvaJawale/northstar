@@ -52,11 +52,13 @@ class ChangeTool(Tool):
     def _mock(self, task, images, query, params) -> ToolResult:
         a = images[0]
         h, w = a.shape[0], a.shape[1]
+        self.emit("[MOCK] Comparing the two dates pixel-by-pixel")
         # synthetic change blob in the top-right (as if new built-up appeared)
         yy, xx = np.mgrid[0:h, 0:w]
         cy, cx = h * 0.3, w * 0.7
         mask = (((xx - cx) ** 2 + (yy - cy) ** 2) < (min(h, w) * 0.18) ** 2).astype(float)
         pct = float(mask.mean() * 100)
+        self.emit("Rendering the change mask", changed_pct=round(pct, 2))
         ev = Evidence(kind="change_map", label="change mask",
                       image_b64=render_mask(a, mask),
                       data={"changed_fraction_pct": round(pct, 2)})

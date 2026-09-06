@@ -33,6 +33,8 @@ class GeoChatTool(Tool):
         # Requires: torch (CUDA), transformers==4.31.0, the geochat-7B checkpoint,
         # and optionally your LoRA adapter (config.LORA_ADAPTER).
         from .geochat_runtime import GeoChatRunner
+        self.emit(f"Loading GeoChat weights ({config.GEOCHAT_MODEL}) — first run only",
+                  model=config.GEOCHAT_MODEL, device=config.DEVICE)
         self._runner = GeoChatRunner(
             model_path=config.GEOCHAT_MODEL,
             conv_mode=config.GEOCHAT_CONV_MODE,
@@ -59,6 +61,8 @@ class GeoChatTool(Tool):
     def _real(self, task, images, query, params) -> ToolResult:
         from .geochat_runtime import numpy_to_pil_rgb
         self._ensure_loaded()
+        self.emit("Preparing the image for the vision encoder",
+                  shape=list(images[0].shape))
         image = numpy_to_pil_rgb(images[0])
 
         if task == "single_caption":
@@ -68,17 +72,21 @@ class GeoChatTool(Tool):
         else:  # single_vqa
             prompt = query
 
+        self.emit(f"Prompting GeoChat for {task}", prompt=prompt)
         text, conf, _ = self._runner.generate(
             image, prompt,
             max_new_tokens=int(params.get("max_new_tokens", 256)),
             temperature=float(params.get("temperature", 0.2)),
         )
+        self.emit("Model answered", chars=len(text), confidence=round(conf, 3))
 
         evidence = []
         if task == "single_grounding":
+            self.emit("Parsing the predicted bounding box")
             h, w = images[0].shape[0], images[0].shape[1]
             box = self._parse_box(text, w, h)
             if box:
+                self.emit("Drawing the box overlay", box_xyxy=[round(v, 1) for v in box])
                 evidence.append(Evidence(
                     kind="bbox", label=query,
                     image_b64=render_bbox(images[0], box, query),
@@ -125,6 +133,7 @@ class GeoChatTool(Tool):
     def _mock(self, task, images, query, params) -> ToolResult:
         img = images[0]
         h, w = img.shape[0], img.shape[1]
+        self.emit(f"[MOCK] Synthesising a {task} answer (no GPU needed)")
         if task == "single_caption":
             return ToolResult(
                 text=("[MOCK] The scene shows a mix of built-up areas, "

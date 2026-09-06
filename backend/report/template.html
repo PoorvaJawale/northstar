@@ -2,58 +2,233 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>SatQuery AI — Evidence Report</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SatQuery AI Evidence Report {{ report_id }}</title>
 <style>
-  body{font-family:system-ui,Segoe UI,Roboto,sans-serif;max-width:820px;margin:32px auto;padding:0 20px;color:#14171f;line-height:1.6}
-  h1{font-size:22px;margin:0 0 4px} .sub{color:#5b6472;font-family:monospace;font-size:13px;margin-bottom:24px}
-  .box{border:1px solid #dbe0e8;border-radius:10px;padding:16px 18px;margin:14px 0}
-  .k{font-family:monospace;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#7a828f}
-  .answer{font-size:17px} .conf{font-weight:700;color:#0d8f8a}
-  img{max-width:100%;border-radius:8px;border:1px solid #dbe0e8;margin-top:8px}
-  ol{padding-left:18px} li{margin:6px 0}
-  code{background:#eef1f5;padding:1px 6px;border-radius:5px;font-size:12.5px}
-  .trace-stage{font-weight:700;text-transform:capitalize}
+  :root{
+    --ink:#10151f; --muted:#5b6472; --rule:#dbe0e8; --wash:#f4f6f9;
+    --accent:#1c5fd6; --teal:#0d8f8a; --paper:#ffffff; --page:#eef1f6;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; padding:32px 16px; background:var(--page); color:var(--ink);
+    font-family:"Segoe UI",system-ui,-apple-system,Roboto,sans-serif;
+    line-height:1.62; font-size:15px;
+  }
+  .sheet{
+    max-width:900px; margin:0 auto; background:var(--paper);
+    border:1px solid var(--rule); border-radius:14px; overflow:hidden;
+    box-shadow:0 12px 40px rgba(16,21,31,.09);
+  }
+  header{padding:34px 40px 26px; border-bottom:1px solid var(--rule);
+    background:linear-gradient(180deg,#fbfcfe 0%,#ffffff 100%)}
+  h1{margin:0; font-size:27px; letter-spacing:-.015em}
+  .kicker{font-family:ui-monospace,"Cascadia Mono",Consolas,monospace;
+    font-size:11px; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--muted); margin-bottom:10px}
+  .meta{font-family:ui-monospace,"Cascadia Mono",Consolas,monospace;
+    font-size:12px; color:var(--muted); margin-top:8px}
+  .badge{display:inline-block; padding:2px 9px; border-radius:999px;
+    border:1px solid var(--rule); background:var(--wash); font-size:11px;
+    letter-spacing:.06em; text-transform:uppercase; color:var(--muted)}
+  main{padding:8px 40px 40px}
+  section{margin-top:30px}
+  h2{font-size:11px; letter-spacing:.16em; text-transform:uppercase;
+    color:var(--accent); margin:0 0 12px; font-weight:700}
+  .panel{border:1px solid var(--rule); border-radius:10px; background:var(--wash);
+    padding:18px 20px}
+  .query{font-size:16px}
+  .answer{font-size:19px; line-height:1.66; font-family:"PT Serif",Georgia,serif}
+  .verdict{margin-top:14px; padding-top:12px; border-top:1px solid var(--rule);
+    display:flex; flex-wrap:wrap; gap:18px; align-items:center;
+    font-family:ui-monospace,"Cascadia Mono",Consolas,monospace; font-size:12px;
+    color:var(--muted)}
+  .conf{color:var(--teal); font-weight:700; font-size:15px}
+  table.kv{width:100%; border-collapse:collapse}
+  table.kv td{padding:7px 0; border-bottom:1px solid var(--rule); vertical-align:top}
+  table.kv tr:last-child td{border-bottom:none}
+  table.kv td.k{width:210px; padding-right:16px; color:var(--muted);
+    font-size:11px; letter-spacing:.07em; text-transform:uppercase;
+    font-weight:600; white-space:nowrap}
+  table.kv td.v{word-break:break-word}
+  .mono{font-family:ui-monospace,"Cascadia Mono",Consolas,monospace; font-size:12.5px}
+  .grid{display:grid; gap:16px; grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
+  .card{border:1px solid var(--rule); border-radius:10px; padding:16px 18px}
+  .card h3{margin:0 0 10px; font-size:13px; letter-spacing:.04em}
+  figure{margin:0 0 18px}
+  figure img{width:100%; max-width:520px; display:block; border-radius:10px;
+    border:1px solid var(--rule); background:#0b1218}
+  figcaption{margin-top:8px; font-size:12px; color:var(--muted);
+    letter-spacing:.05em; text-transform:uppercase}
+  .stage{border-left:2px solid var(--rule); padding:0 0 20px 20px;
+    position:relative; margin-left:6px}
+  .stage:last-child{padding-bottom:0}
+  .stage::before{content:""; position:absolute; left:-6px; top:5px; width:10px;
+    height:10px; border-radius:50%; background:var(--accent);
+    box-shadow:0 0 0 3px var(--paper)}
+  .stage-head{display:flex; align-items:baseline; justify-content:space-between;
+    gap:14px; flex-wrap:wrap}
+  .stage-name{font-weight:700; font-size:14px; letter-spacing:.03em;
+    text-transform:capitalize}
+  .stage-idx{color:var(--muted); font-family:ui-monospace,Consolas,monospace;
+    font-size:12px; margin-right:8px}
+  .stage-dur{font-family:ui-monospace,Consolas,monospace; font-size:12px;
+    color:var(--muted); white-space:nowrap}
+  .bar{height:3px; background:var(--rule); border-radius:2px; margin:8px 0 10px;
+    overflow:hidden}
+  .bar span{display:block; height:100%; background:var(--accent); border-radius:2px}
+  .detail{font-size:14px}
+  .payload{margin-top:10px; border:1px solid var(--rule); border-radius:8px;
+    background:var(--wash); padding:10px 14px}
+  .logs{margin-top:12px}
+  .log{border-left:2px solid var(--rule); padding:2px 0 2px 14px; margin:10px 0}
+  .log-text{font-size:13.5px}
+  .log-text::before{content:"\25CF"; color:var(--teal); margin-right:8px;
+    font-size:10px; vertical-align:2px}
+  footer{padding:22px 40px 30px; border-top:1px solid var(--rule);
+    color:var(--muted); font-size:12px; background:var(--wash)}
+  @media print{
+    body{background:#fff; padding:0; font-size:11pt}
+    .sheet{border:none; box-shadow:none; border-radius:0; max-width:none}
+    header,main,footer{padding-left:0; padding-right:0}
+    .stage,figure,.card{break-inside:avoid}
+  }
 </style>
 </head>
 <body>
-  <h1>SatQuery AI — Evidence Report</h1>
-  <div class="sub">PS 26167 · ISRO · agentic remote-sensing assistant</div>
+<div class="sheet">
 
-  <div class="box">
-    <div class="k">Query</div>
-    <div>{{ r.query }}</div>
-  </div>
+  <header>
+    <div class="kicker">PS 26167 &middot; ISRO &middot; agentic remote sensing assistant</div>
+    <h1>SatQuery AI Evidence Report</h1>
+    <div class="meta">
+      Report {{ report_id }} &nbsp;|&nbsp; generated {{ generated }}
+      &nbsp;<span class="badge">{{ "completed" if r.ok else "failed" }}</span>
+    </div>
+  </header>
 
-  <div class="box">
-    <div class="k">Task &amp; tools</div>
-    <div><code>{{ r.task }}</code> &nbsp;→&nbsp; {{ r.tools_used|join(", ") }}</div>
-  </div>
+  <main>
 
-  <div class="box">
-    <div class="k">Answer</div>
-    <div class="answer">{{ r.answer }}</div>
-    <div style="margin-top:8px">Confidence: <span class="conf">{{ (r.confidence*100)|round(1) }}%</span></div>
-  </div>
+    <section>
+      <h2>Query</h2>
+      <div class="panel query">{{ query }}</div>
+    </section>
 
-  {% if r.evidence %}
-  <div class="box">
-    <div class="k">Visual evidence</div>
-    {% for e in r.evidence %}
-      <div style="margin-top:10px">{{ e.label or e.kind }}</div>
-      {% if e.image_b64 %}<img src="data:image/png;base64,{{ e.image_b64 }}" alt="{{ e.kind }}">{% endif %}
-    {% endfor %}
-  </div>
-  {% endif %}
+    <section>
+      <h2>Answer</h2>
+      <div class="panel">
+        <div class="answer">{{ answer }}</div>
+        <div class="verdict">
+          <span class="conf">{{ confidence_pct }}% confidence</span>
+          <span>task: {{ r.task or "not classified" }}</span>
+          <span>tool: {{ r.tools_used|join(", ") or "none" }}</span>
+        </div>
+      </div>
+    </section>
 
-  <div class="box">
-    <div class="k">Auditable execution trace</div>
-    <ol>
-      {% for s in r.trace %}
-      <li><span class="trace-stage">{{ s.stage }}</span> — {{ s.detail }}
-        {% if s.data %}<br><code>{{ s.data }}</code>{% endif %}
-      </li>
+    <section>
+      <h2>Run summary</h2>
+      <table class="kv">
+        {% for k, v in summary %}
+        <tr><td class="k">{{ k }}</td><td class="v">{{ v }}</td></tr>
+        {% endfor %}
+      </table>
+    </section>
+
+    {% if scenes %}
+    <section>
+      <h2>Input scenes ({{ scenes|length }})</h2>
+      <div class="grid">
+        {% for rows in scenes %}
+        <div class="card">
+          <h3>Scene {{ loop.index }}</h3>
+          <table class="kv">
+            {% for k, v in rows %}
+            <tr><td class="k">{{ k }}</td><td class="v mono">{{ v }}</td></tr>
+            {% endfor %}
+          </table>
+        </div>
+        {% endfor %}
+      </div>
+    </section>
+    {% endif %}
+
+    {% if evidence %}
+    <section>
+      <h2>Visual evidence ({{ evidence|length }})</h2>
+      {% for e in evidence %}
+      <figure>
+        {% if e.image_b64 %}
+        <img src="data:image/png;base64,{{ e.image_b64 }}" alt="{{ e.kind }}">
+        {% endif %}
+        <figcaption>{{ e.kind }}{% if e.label %} &middot; {{ e.label }}{% endif %}</figcaption>
+        {% if e.payload %}
+        <div class="payload">
+          <table class="kv">
+            {% for k, v in e.payload %}
+            <tr><td class="k">{{ k }}</td><td class="v mono">{{ v }}</td></tr>
+            {% endfor %}
+          </table>
+        </div>
+        {% endif %}
+      </figure>
       {% endfor %}
-    </ol>
-  </div>
+    </section>
+    {% endif %}
+
+    <section>
+      <h2>Auditable execution trace</h2>
+      <p style="margin:0 0 16px; color:var(--muted); font-size:13px">
+        Every stage the agent ran, in order, with its wall clock duration, the
+        payload it recorded and the progress the selected tool reported while it
+        worked. Total runtime {{ (total_ms / 1000)|round(1) }} s.
+      </p>
+      {% for s in stages %}
+      <div class="stage">
+        <div class="stage-head">
+          <div><span class="stage-idx">{{ "%02d"|format(s.index) }}</span><span class="stage-name">{{ s.stage }}</span></div>
+          <div class="stage-dur">{{ s.duration }}</div>
+        </div>
+        <div class="bar"><span style="width:{{ ((s.ms or 0) / max_ms * 100)|round(1) }}%"></span></div>
+        <div class="detail">{{ s.detail }}</div>
+        {% if s.payload %}
+        <div class="payload">
+          <table class="kv">
+            {% for k, v in s.payload %}
+            <tr><td class="k">{{ k }}</td><td class="v mono">{{ v }}</td></tr>
+            {% endfor %}
+          </table>
+        </div>
+        {% endif %}
+        {% if s.logs %}
+        <div class="logs">
+          {% for log in s.logs %}
+          <div class="log">
+            <div class="log-text">{{ log.detail }}</div>
+            {% if log.payload %}
+            <table class="kv" style="margin-top:6px">
+              {% for k, v in log.payload %}
+              <tr><td class="k">{{ k }}</td><td class="v mono">{{ v }}</td></tr>
+              {% endfor %}
+            </table>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </section>
+
+  </main>
+
+  <footer>
+    Generated by SatQuery AI. The trace above is the complete, unedited record of
+    how this answer was produced: which models were considered, which one was
+    selected from the registry, the parameters it was permitted to use and what
+    it reported at each step.
+  </footer>
+
+</div>
 </body>
 </html>

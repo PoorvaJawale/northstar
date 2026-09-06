@@ -54,6 +54,8 @@ class TraceStep(BaseModel):
     stage: str                    # e.g. "inspect", "classify", "select", "execute", "fuse"
     detail: str
     data: dict[str, Any] = Field(default_factory=dict)
+    kind: Literal["stage", "log"] = "stage"   # "log" = fine-grained tool progress
+    ms: Optional[int] = None                  # wall-clock duration of the stage
 
 
 class ToolResult(BaseModel):
