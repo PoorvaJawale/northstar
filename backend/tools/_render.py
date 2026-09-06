@@ -40,6 +40,20 @@ def render_bbox(arr: np.ndarray, box: list[float], label: str = "") -> str:
     return _encode(img)
 
 
+def render_boxes(arr: np.ndarray, boxes: list[list[float]], label: str = "") -> str:
+    """Draw zero or more [x0,y0,x1,y1] pixel boxes on the image (one overlay).
+    With an empty list it just returns the scene, so grounding always has a
+    picture to show as evidence."""
+    img = _base_rgb(arr)
+    d = ImageDraw.Draw(img)
+    wpx = max(2, img.width // 150)
+    for box in boxes:
+        d.rectangle(box, outline=(255, 90, 40), width=wpx)
+    if label and boxes:
+        d.text((boxes[0][0] + 4, boxes[0][1] + 4), label, fill=(255, 90, 40))
+    return _encode(img)
+
+
 def render_mask(arr: np.ndarray, mask: np.ndarray, color=(45, 212, 191)) -> str:
     """Overlay a boolean/float mask (H,W) on the image."""
     img = _base_rgb(arr)

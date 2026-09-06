@@ -13,7 +13,7 @@ from typing import Any
 import numpy as np
 
 from .base import Tool
-from ._render import render_bbox
+from ._render import render_bbox, render_boxes
 from ..schemas import ToolResult, Evidence, Task
 from .. import config
 
@@ -81,17 +81,30 @@ class GeoChatTool(Tool):
         self.emit("Model answered", chars=len(text), confidence=round(conf, 3))
 
         evidence = []
+        out_text = text
         if task == "single_grounding":
-            self.emit("Parsing the predicted bounding box")
+            self.emit("Parsing the predicted bounding box(es)")
             h, w = images[0].shape[0], images[0].shape[1]
-            box = self._parse_box(text, w, h)
-            if box:
-                self.emit("Drawing the box overlay", box_xyxy=[round(v, 1) for v in box])
+            ref = self._referring_expression(query)
+            boxes = self._parse_boxes(text, w, h)
+            if boxes:
+                self.emit("Drawing the box overlay", n=len(boxes),
+                          boxes=[[round(v, 1) for v in b] for b in boxes])
                 evidence.append(Evidence(
-                    kind="bbox", label=query,
-                    image_b64=render_bbox(images[0], box, query),
-                    data={"box_xyxy": box}))
-        return ToolResult(text=text, evidence=evidence, confidence=conf,
+                    kind="bbox", label=ref,
+                    image_b64=render_boxes(images[0], boxes, ref),
+                    data={"boxes_xyxy": boxes, "raw": text}))
+                out_text = (f"Highlighted {ref}: {len(boxes)} region"
+                            f"{'s' if len(boxes) != 1 else ''} marked on the image.")
+            else:
+                # No parseable coordinates: still return the scene as evidence so
+                # the user always sees the image the model looked at.
+                self.emit("No box parsed; showing the scene without an overlay")
+                evidence.append(Evidence(
+                    kind="overlay", label=ref,
+                    image_b64=render_boxes(images[0], [], ref),
+                    data={"raw": text}))
+        return ToolResult(text=out_text, evidence=evidence, confidence=conf,
                           tool_name=self.name, params_used=params)
 
     @staticmethod
@@ -109,25 +122,29 @@ class GeoChatTool(Tool):
         return q.strip() or query.strip()
 
     @staticmethod
-    def _parse_box(text: str, w: int, h: int):
-        """Parse GeoChat's {<x><y><x><y>|<angle>} grounding output (0-100 grid)
-        and scale to pixels. Prefers the bracketed format; falls back to the
-        first four numbers. Returns [x0,y0,x1,y1] or None (then we show text)."""
+    def _parse_boxes(text: str, w: int, h: int) -> list[list[float]]:
+        """Parse GeoChat grounding output into pixel boxes. GeoChat emits one or
+        more oriented boxes like `{<x0><y0><x1><y1>|<angle>}` on a 0-100 grid.
+        We take each brace group's first four numbers, scale to pixels, and
+        normalise to [xmin,ymin,xmax,ymax] (so reversed/rotated coords never get
+        dropped). Falls back to the first four bare numbers if no braces.
+        Returns a possibly-empty list."""
         import re
-        m = re.search(r"<\s*([\d.]+)\s*>\s*<\s*([\d.]+)\s*>\s*<\s*([\d.]+)\s*>\s*<\s*([\d.]+)\s*>", text)
-        if m:
-            vals = [float(x) for x in m.groups()]
-        else:
-            nums = re.findall(r"\d+(?:\.\d+)?", text.replace("|", " "))
-            if len(nums) < 4:
-                return None
-            vals = [float(v) for v in nums[:4]]
-        x0, y0, x1, y1 = vals
         sx, sy = w / 100.0, h / 100.0
-        box = [x0 * sx, y0 * sy, x1 * sx, y1 * sy]
-        if box[2] <= box[0] or box[3] <= box[1]:
-            return None
-        return box
+        groups = re.findall(r"\{([^}]*)\}", text)
+        chunks = groups if groups else [text]
+        boxes: list[list[float]] = []
+        for ch in chunks:
+            nums = re.findall(r"\d+(?:\.\d+)?", ch)
+            if len(nums) < 4:
+                continue
+            x0, y0, x1, y1 = (float(v) for v in nums[:4])
+            xa, xb = sorted((x0 * sx, x1 * sx))
+            ya, yb = sorted((y0 * sy, y1 * sy))
+            if xb - xa < 1 or yb - ya < 1:      # degenerate -> skip
+                continue
+            boxes.append([xa, ya, xb, yb])
+        return boxes
 
     # ---- MOCK inference (runs today) -------------------------------------
     def _mock(self, task, images, query, params) -> ToolResult:
