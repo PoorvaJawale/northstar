@@ -1,66 +1,265 @@
 import { useEffect, useRef, useState } from 'react';
 
-const STAGES = ['inspect', 'classify', 'select', 'execute', 'fuse'];
-const stageLabels = { inspect: 'Inspect imagery', classify: 'Classify task', select: 'Select model', execute: 'Execute', fuse: 'Prepare evidence' };
-const taskLabels = { single_vqa: 'Single scene analysis', single_caption: 'Scene description', single_grounding: 'Visual grounding', change_vqa: 'Bi-temporal change detection', change_map: 'Change map', cross_modal: 'Optical + SAR fusion' };
-const formatStage = (stage) => stage?.replace(/_/g, ' ').replace(/\b\w/g, (m) => m.toUpperCase()) || 'STEP';
+// Guided, plain-language modes so non-expert users (field officers, farmers,
+// IMD/disaster staff) don't have to know how to phrase an agentic query.
+const MODES = {
+  single: {
+    label: 'Single image',
+    hint: 'Upload ONE satellite image.',
+    need: 1,
+    presets: [
+      'Is there a water body in this image?',
+      'Is this a rural or an urban area?',
+      'Describe the land cover and major objects.',
+      'Highlight the buildings.',
+      'Highlight the water body.',
+    ],
+  },
+  change: {
+    label: 'Compare two dates',
+    hint: 'Upload TWO images of the SAME area from different dates.',
+    need: 2,
+    presets: [
+      'What changed between these two dates and where?',
+      'Has the built-up area increased or decreased?',
+    ],
+  },
+  fusion: {
+    label: 'Optical + Radar (SAR)',
+    hint: 'Upload an OPTICAL image and a SAR (radar) image of the same area.',
+    need: 2,
+    presets: [
+      'Use the optical and SAR images to identify built-up and water.',
+      'Where is the water in this scene?',
+    ],
+  },
+};
 
-function Icon({ name, size = 16 }) {
-  const paths = {
-    upload: <><path d="M12 16V4" /><path d="m8 8 4-4 4 4" /><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" /></>,
-    layers: <><path d="m12 3 8 4-8 4-8-4 8-4Z" /><path d="m4 12 8 4 8-4" /><path d="m4 17 8 4 8-4" /></>,
-    target: <><circle cx="12" cy="12" r="8" /><circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3" /></>,
-    zoomIn: <><circle cx="10.5" cy="10.5" r="6.5" /><path d="M16 16 21 21M10.5 7.5v6M7.5 10.5h6" /></>,
-    zoomOut: <><circle cx="10.5" cy="10.5" r="6.5" /><path d="M16 16 21 21M7.5 10.5h6" /></>,
-    external: <><path d="M14 4h6v6M20 4l-9 9" /><path d="M18 13v5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h5" /></>,
-    check: <path d="m5 12 4 4L19 6" />,
-    chevron: <path d="m6 9 6 6 6-6" />,
-  };
-  return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name] || paths.target}</svg>;
+const taskLabels = {
+  single_vqa: 'Question answering',
+  single_caption: 'Scene description',
+  single_grounding: 'Region highlighting',
+  change_vqa: 'Change detection',
+  change_map: 'Change map',
+  cross_modal: 'Optical + SAR fusion',
+};
+
+const stageLabel = (s) => ({
+  inspect: 'Checked the image(s)',
+  classify: 'Understood the question',
+  select: 'Chose the right model',
+  execute: 'Ran the analysis',
+  fuse: 'Prepared the answer',
+  report: 'Generated the report',
+}[s] || s);
+
+function confidenceWord(pct) {
+  if (pct >= 80) return 'High confidence';
+  if (pct >= 60) return 'Moderate confidence';
+  return 'Limited confidence';
 }
-function SectionTitle({ children, meta }) { return <div className="section-title"><span>{children}</span>{meta && <span className="section-meta">{meta}</span>}</div>; }
-function SceneCard({ file, index, imageMeta, onRemove }) { const preview = imageMeta?.preview_png_b64 ? `data:image/png;base64,${imageMeta.preview_png_b64}` : URL.createObjectURL(file); return <div className="scene-card"><img src={preview} alt={`${file.name} preview`} /><div className="scene-info"><div className="scene-heading"><strong>SCENE {String(index + 1).padStart(2, '0')}</strong><button type="button" onClick={onRemove}>Remove</button></div><div className="scene-name" title={file.name}>{file.name}</div><div className="metadata">{imageMeta?.modality || 'uploaded'} · {imageMeta?.width || '—'} × {imageMeta?.height || '—'} px</div><div className="metadata">{imageMeta?.fmt || file.type || 'image'}{imageMeta?.georeferenced ? ' · georeferenced' : ''}</div></div></div>; }
-
-function LegacyImageryViewer({ files, result, loading, onAdd, collapsed, onToggle }) {
-  const [zoom, setZoom] = useState(1); const image = files[0]; const meta = result?.input_config?.images?.[0]; const source = meta?.preview_png_b64 ? `data:image/png;base64,${meta.preview_png_b64}` : image ? URL.createObjectURL(image) : null; const evidenceImage = result?.evidence?.find((item) => item.image_b64)?.image_b64;
-  return <section className={`viewer-panel ${collapsed ? 'viewer-collapsed' : ''}`}>{!collapsed && <><div className="viewer-toolbar"><div><span className="eyebrow">SATELLITE IMAGERY</span><span className="viewer-state">{loading ? 'ANALYSIS IN PROGRESS' : result ? 'ANALYSIS COMPLETE' : 'READY FOR ANALYSIS'}</span></div><div className="map-actions"><button type="button" aria-label="Zoom out" onClick={() => setZoom((v) => Math.max(.6, v - .2))}><Icon name="zoomOut" /></button><button type="button" aria-label="Zoom in" onClick={() => setZoom((v) => Math.min(2, v + .2))}><Icon name="zoomIn" /></button><button type="button" aria-label="Fit imagery" onClick={() => setZoom(1)}><Icon name="target" /></button><button type="button" className="viewer-collapse-button" aria-label="Collapse imagery viewer" onClick={() => setCollapsed(true)}><Icon name="chevron" /></button></div></div><div className="imagery-stage"><div className="map-grid" />{source ? <img className="primary-imagery" src={evidenceImage ? `data:image/png;base64,${evidenceImage}` : source} style={{ transform: `scale(${zoom})` }} alt="Uploaded satellite imagery" /> : <div className="viewer-empty"><div className="viewer-crosshair"><Icon name="target" size={30} /></div><strong>NO SCENE LOADED</strong><span>Add satellite imagery to begin an analysis.</span><button type="button" onClick={onAdd}><Icon name="upload" size={14} /> Add scene</button></div>}<div className="map-readout"><span>VIEWER</span><strong>{meta?.georeferenced ? 'GEOREFERENCED' : 'LOCAL IMAGE'}</strong><span>{meta?.width ? `${meta.width} × ${meta.height} px` : 'No resolution metadata'}</span></div>{result?.evidence?.some((item) => ['bbox', 'mask', 'change_map', 'overlay'].includes(item.kind)) && <div className="map-overlay-key"><span><i className="key-red" /> Evidence overlay</span><span className="metadata">Source: analysis output</span></div>}</div></>}<div className="viewer-footer"><span><i className="live-dot" /> Imagery viewport</span><span>{files.length ? `${files.length} scene${files.length > 1 ? 's' : ''} loaded` : 'Awaiting scene'}</span><span>Zoom {zoom.toFixed(1)}×</span>{collapsed && <button type="button" className="viewer-expand-button" aria-label="Expand imagery viewer" onClick={() => setCollapsed(false)}><Icon name="chevron" /></button>}</div></section>;
-}
-
-function ImageryViewer({ files, result, onAdd }) {
-  const [zoom, setZoom] = useState(1);
-  const [collapsed, setCollapsed] = useState(false);
-  const image = files[0];
-  const meta = result?.input_config?.images?.[0];
-  const source = meta?.preview_png_b64 ? `data:image/png;base64,${meta.preview_png_b64}` : image ? URL.createObjectURL(image) : null;
-  const evidenceImage = result?.evidence?.find((item) => item.image_b64)?.image_b64;
-  return <section className={`viewer-panel ${collapsed ? 'viewer-collapsed' : ''}`}>
-    {!collapsed && <>
-      <div className="viewer-toolbar"><div className="map-actions"><button type="button" aria-label="Zoom out" onClick={() => setZoom((value) => Math.max(.6, value - .2))}><Icon name="zoomOut" /></button><button type="button" aria-label="Zoom in" onClick={() => setZoom((value) => Math.min(2, value + .2))}><Icon name="zoomIn" /></button><button type="button" aria-label="Fit imagery" onClick={() => setZoom(1)}><Icon name="target" /></button></div></div>
-      <div className="imagery-stage"><div className="map-grid" />{source ? <img className="primary-imagery" src={evidenceImage ? `data:image/png;base64,${evidenceImage}` : source} style={{ transform: `scale(${zoom})` }} alt="Uploaded satellite imagery" /> : <div className="viewer-empty"><div className="viewer-crosshair"><Icon name="target" size={30} /></div><strong>NO SCENE LOADED</strong><span>Add satellite imagery to begin an analysis.</span><button type="button" onClick={onAdd}><Icon name="upload" size={14} /> Add scene</button></div>}<div className="map-readout"><span>VIEWER</span><strong>{meta?.georeferenced ? 'GEOREFERENCED' : 'LOCAL IMAGE'}</strong><span>{meta?.width ? `${meta.width} × ${meta.height} px` : 'No resolution metadata'}</span></div>{result?.evidence?.some((item) => ['bbox', 'mask', 'change_map', 'overlay'].includes(item.kind)) && <div className="map-overlay-key"><span><i className="key-red" /> Evidence overlay</span><span className="metadata">Source: analysis output</span></div>}</div>
-    </>}
-    <div className="viewer-footer"><span><i className="live-dot" /> Imagery viewport</span><span>{files.length ? `${files.length} scene${files.length > 1 ? 's' : ''} loaded` : 'Awaiting scene'}</span><span>Zoom {zoom.toFixed(1)}×</span><button type="button" className="viewer-toggle-button" aria-label={collapsed ? 'Expand evidence' : 'Collapse evidence'} onClick={() => setCollapsed((value) => !value)}><Icon name="chevron" /></button></div>
-  </section>;
-}
-function Confidence({ value, loading }) { const pct = value == null ? 0 : Math.round(Number(value) * 100); return <div className="confidence-block"><div className="confidence-number">{loading ? '—' : `${pct}%`}</div><div className="confidence-label">{loading ? 'Measuring' : pct >= 80 ? 'High confidence' : pct >= 60 ? 'Moderate confidence' : 'Limited confidence'}</div><div className="confidence-bar"><span style={{ width: `${loading ? 0 : pct}%` }} /></div></div>; }
-function EvidencePanel({ evidence }) { return <div className="evidence-panel"><SectionTitle meta={`${evidence.length} artifact${evidence.length === 1 ? '' : 's'}`}>EVIDENCE</SectionTitle>{evidence.length ? <div className="evidence-grid">{evidence.map((item, index) => <figure className="evidence-card" key={`${item.kind}-${index}`}>{item.image_b64 && <img src={`data:image/png;base64,${item.image_b64}`} alt={item.label || `${item.kind} evidence`} />}<figcaption><strong>{item.label || item.kind.replace('_', ' ')}</strong><span>{item.kind.toUpperCase()} · visual artifact</span></figcaption></figure>)}</div> : <div className="empty-inline">Visual and spatial evidence will appear here when returned by the selected model.</div>}</div>; }
-function Trace({ trace, loading }) { const [open, setOpen] = useState(false); return <div className="trace-panel"><button type="button" className="trace-heading" onClick={() => setOpen((v) => !v)}><span><SectionTitle meta={loading ? 'RUNNING' : `${trace.length} stages`}>EXECUTION DETAILS</SectionTitle></span><Icon name="chevron" size={15} /></button>{(open || loading) && <div className="trace-list">{loading ? STAGES.map((stage, index) => <div className="trace-row" key={stage}><span className="trace-index">{index + 1}</span><span>{stageLabels[stage]}</span><span className="trace-status">{index === 0 ? 'ACTIVE' : 'QUEUED'}</span></div>) : trace.length ? trace.map((step, index) => <div className="trace-row trace-row-detail" key={`${step.stage}-${index}`}><span className="trace-index"><Icon name="check" size={12} /></span><div><strong>{formatStage(step.stage)}</strong><div className="metadata">{step.detail}</div>{step.data && Object.keys(step.data).length > 0 && <details><summary>View metadata</summary><pre>{JSON.stringify(step.data, null, 2)}</pre></details>}</div></div>) : <div className="empty-inline">Execution trace will appear after a query is submitted.</div>}</div>}</div>; }
-
-function DataSidebar({ files, result, loading, fileInputRef, onFiles, onRemove, query, setQuery, onSubmit, onClear }) { const metas = result?.input_config?.images || []; return <aside className="data-sidebar"><div className="panel-heading"><div><span className="eyebrow">DATA</span><h2>Scenes & layers</h2></div><span className="count-badge">{files.length}/2</span></div><label className="add-scene"><input ref={fileInputRef} type="file" accept=".tif,.tiff,.png,.jpg,.jpeg" multiple onChange={onFiles} /><Icon name="upload" /><span><strong>ADD SCENE</strong><small>GeoTIFF · TIFF · PNG · JPEG</small></span></label><div className="scene-list">{files.length ? files.map((file, index) => <SceneCard key={`${file.name}-${index}`} file={file} index={index} imageMeta={metas[index]} onRemove={() => onRemove(index)} />) : <div className="empty-sidebar">No imagery loaded.<br />Add one or two scenes to begin.</div>}</div><SectionTitle meta="visualization">LAYERS</SectionTitle><div className="layer-list">{['True color', 'False color', 'NDVI', 'NDWI', 'SAR VV', 'Change mask', 'AI detection'].map((layer, index) => <label key={layer} className={index === 0 ? 'layer-active' : ''}><input type="checkbox" defaultChecked={index === 0} disabled={index !== 0 && !result} /><span>{layer}</span>{index !== 0 && !result && <em>unavailable</em>}</label>)}</div><SectionTitle meta="not connected">AOI</SectionTitle><div className="aoi-actions"><button type="button" disabled><Icon name="target" size={14} /> Draw AOI</button><button type="button" disabled><Icon name="upload" size={14} /> Upload GeoJSON</button></div><div className="query-block"><SectionTitle>ANALYSIS QUERY</SectionTitle><textarea value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Ask a question about this imagery..." rows={4} /><button type="button" className="run-button" onClick={onSubmit} disabled={loading || !files.length}>{loading ? 'ANALYSIS IN PROGRESS' : 'RUN ANALYSIS'}</button><button type="button" className="clear-button" onClick={onClear}>Clear workspace <span>Esc</span></button></div></aside>; }
-function AnalysisPanel({ result, loading, registry, onReport }) { const task = result?.task ? (taskLabels[result.task] || result.task) : 'Awaiting task classification'; return <aside className="analysis-panel"><div className="panel-heading"><div><span className="eyebrow">AI ANALYSIS</span><h2>Analytical copilot</h2></div><span className={`status-chip ${loading ? 'status-running' : result ? 'status-complete' : ''}`}>{loading ? 'RUNNING' : result ? 'COMPLETE' : 'READY'}</span></div><div className="query-display"><span className="eyebrow">QUERY</span><p>{result?.query || 'Submit a query to inspect the loaded scene.'}</p></div><div className="analysis-facts"><div><span className="eyebrow">TASK</span><strong>{task}</strong></div><div><span className="eyebrow">MODEL / TOOL</span><strong>{result?.tools_used?.join(', ') || (registry.length ? 'Agent-selected' : 'Not selected')}</strong></div></div><div className="finding"><span className="eyebrow">FINDING</span>{loading ? <div className="finding-loading"><i /><i /><i /></div> : <p>{result?.answer || 'Your structured finding will appear here after analysis.'}</p>}</div><div className="confidence-wrap"><SectionTitle>CONFIDENCE</SectionTitle><Confidence value={result?.confidence} loading={loading} /><p className="metadata">Model confidence based on the returned analysis signal. No additional certainty is inferred by the interface.</p></div>{result?.report_id && <button type="button" className="export-button" onClick={onReport}><Icon name="external" size={14} /> Export analysis report</button>}<div className="model-summary"><SectionTitle meta={`${registry.length} online`}>MODELS</SectionTitle>{registry.length ? registry.map((tool) => <div className="model-row" key={tool.name}><span className="online-dot" /><div><strong>{tool.name}</strong><span>{tool.input_type} · {tool.tasks?.slice(0, 2).join(' · ')}</span></div></div>) : <div className="empty-inline">Registry unavailable.</div>}</div><Trace trace={result?.trace || []} loading={loading} /></aside>; }
-function Timeline({ files }) { return <div className="timeline"><div className="timeline-label"><span className="eyebrow">SCENE NAVIGATION</span><strong>{files.length > 1 ? 'Bi-temporal comparison' : 'Temporal context'}</strong></div><div className="timeline-track"><span className="timeline-line" />{[0, 1, 2].map((point) => <span className={`timeline-point ${point < files.length ? 'selected' : ''}`} key={point} style={{ left: `${18 + point * 32}%` }}><i />{point < files.length ? `SCENE ${String(point + 1).padStart(2, '0')}` : 'AVAILABLE'}</span>)}</div><div className="comparison-mode"><button type="button" className="active">SINGLE VIEW</button><button type="button" disabled>SPLIT VIEW</button></div></div>; }
 
 function App() {
-  const fileInputRef = useRef(null); const [files, setFiles] = useState([]); const [query, setQuery] = useState(''); const [status, setStatus] = useState('CHECKING'); const [registry, setRegistry] = useState([]); const [result, setResult] = useState(null); const [loading, setLoading] = useState(false);
+  const fileInputRef = useRef(null);
+  const [mode, setMode] = useState('single');
+  const [files, setFiles] = useState([]);
+  const [query, setQuery] = useState('');
+  const [status, setStatus] = useState('checking');
+  const [live, setLive] = useState(false);
+  const [registry, setRegistry] = useState([]);
+  const [result, setResult] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [showTech, setShowTech] = useState(false);
+
   useEffect(() => { loadHealth(); loadRegistry(); }, []);
-  useEffect(() => { const onKeyDown = (event) => { if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') { event.preventDefault(); handleSubmit(); } if (event.key === 'Escape') clearWorkspace(); }; window.addEventListener('keydown', onKeyDown); return () => window.removeEventListener('keydown', onKeyDown); });
-  async function loadHealth() { try { const response = await fetch('/api/health'); const data = await response.json(); setStatus(data.mock_mode ? 'MOCK MODE' : 'LIVE MODELS'); } catch { setStatus('OFFLINE'); } }
-  async function loadRegistry() { try { const response = await fetch('/api/registry'); const data = await response.json(); setRegistry(data.tools || []); } catch { setRegistry([]); } }
-  function handleFiles(event) { setFiles(Array.from(event.target.files || []).slice(0, 2)); if (fileInputRef.current) fileInputRef.current.value = ''; }
-  function removeFile(index) { setFiles((current) => current.filter((_, itemIndex) => itemIndex !== index)); }
-  function clearWorkspace() { setFiles([]); setQuery(''); setResult(null); setLoading(false); if (fileInputRef.current) fileInputRef.current.value = ''; }
-  async function handleSubmit() { if (!files.length) { alert('Please choose 1 or 2 images.'); return; } if (!query.trim()) { alert('Please type a question.'); return; } setLoading(true); setResult(null); const formData = new FormData(); formData.append('text', query.trim()); files.forEach((file) => formData.append('images', file)); try { const response = await fetch('/api/query', { method: 'POST', body: formData }); setResult(await response.json()); } catch (error) { alert(`Request failed: ${error}`); } finally { setLoading(false); } }
-  const dashboard = files.length > 0 || loading || result;
-  function report() { if (result?.report_id) window.open(`/api/report/${result.report_id}`, '_blank', 'noopener,noreferrer'); }
-  return <div className="app-shell"><header className="app-header"><div className="brand"><div className="brand-mark"><span>N</span></div><div><strong>NORTHSTAR</strong><span>EARTH OBSERVATION INTELLIGENCE</span></div></div><div className="workspace-title"><span className="eyebrow">WORKSPACE</span><strong>{files.length > 1 ? 'Multi-scene analysis' : 'New analysis workspace'}</strong></div><div className="header-status"><span className="live-dot" />{status}<button type="button" onClick={loadRegistry}>Models <span>{registry.length}</span></button></div></header>{!dashboard ? <main className="empty-workspace"><div className="empty-intro"><span className="eyebrow">NORTHSTAR / NEW WORKSPACE</span><h1>Earth observation<br /><em>analysis workstation</em></h1><p>Load satellite imagery, define a question, and receive a traceable analytical finding with visual evidence.</p><label className="empty-upload"><input ref={fileInputRef} type="file" accept=".tif,.tiff,.png,.jpg,.jpeg" multiple onChange={handleFiles} /><Icon name="upload" size={18} /><span><strong>ADD SCENE</strong><small>Upload one or two satellite images</small></span></label></div><div className="mode-strip"><div><span className="mode-index">01</span><strong>SINGLE SCENE</strong><span>Analyze one image</span></div><div><span className="mode-index">02</span><strong>CHANGE DETECTION</strong><span>Compare two scenes</span></div><div><span className="mode-index">03</span><strong>OPTICAL + SAR</strong><span>Fuse complementary sensors</span></div></div></main> : <main className="workspace"><DataSidebar files={files} result={result} loading={loading} fileInputRef={fileInputRef} onFiles={handleFiles} onRemove={removeFile} query={query} setQuery={setQuery} onSubmit={handleSubmit} onClear={clearWorkspace} /><div className="center-column"><ImageryViewer files={files} result={result} loading={loading} onAdd={() => fileInputRef.current?.click()} /><EvidencePanel evidence={result?.evidence || []} /><Timeline files={files} /></div><AnalysisPanel result={result} loading={loading} registry={registry} onReport={report} /></main>}<footer className="app-footer"><span>NORTHSTAR · PS 26167 · ISRO</span><span>Keyboard: Ctrl / Cmd + Enter to run · Esc to clear</span><span><i className="live-dot" /> {status}</span></footer></div>;
+
+  async function loadHealth() {
+    try {
+      const d = await (await fetch('/api/health')).json();
+      setLive(!d.mock_mode);
+      setStatus(d.mock_mode ? 'Demo mode' : 'Live models connected');
+    } catch { setLive(false); setStatus('Backend offline'); }
+  }
+  async function loadRegistry() {
+    try { const d = await (await fetch('/api/registry')).json(); setRegistry(d.tools || []); }
+    catch { setRegistry([]); }
+  }
+  function handleFiles(e) {
+    setFiles(Array.from(e.target.files || []).slice(0, 2));
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }
+  function removeFile(i) { setFiles((c) => c.filter((_, k) => k !== i)); }
+  function clearAll() { setFiles([]); setQuery(''); setResult(null); setLoading(false); }
+
+  async function submit(q) {
+    const text = (q ?? query).trim();
+    if (!files.length) { alert('Please add an image first.'); return; }
+    if (!text) { alert('Please choose or type a question.'); return; }
+    setQuery(text); setLoading(true); setResult(null); setShowTech(false);
+    const fd = new FormData();
+    fd.append('text', text);
+    files.forEach((f) => fd.append('images', f));
+    try {
+      const r = await fetch('/api/query', { method: 'POST', body: fd });
+      setResult(await r.json());
+    } catch (err) { alert(`Request failed: ${err}`); }
+    finally { setLoading(false); }
+  }
+  function openReport() {
+    if (result?.report_id) window.open(`/api/report/${result.report_id}`, '_blank', 'noopener,noreferrer');
+  }
+
+  const m = MODES[mode];
+  const previews = files.map((f, i) => result?.input_config?.images?.[i]?.preview_png_b64
+    ? `data:image/png;base64,${result.input_config.images[i].preview_png_b64}`
+    : URL.createObjectURL(f));
+  const evidenceImgs = (result?.evidence || []).filter((e) => e.image_b64);
+  const pct = result?.confidence == null ? null : Math.round(Number(result.confidence) * 100);
+
+  return (
+    <div className="page">
+      <div className="tricolor" />
+      <header className="gov-header">
+        <div className="gov-emblem" aria-hidden="true">🛰️</div>
+        <div className="gov-title">
+          <h1>SatQuery AI</h1>
+          <p>Satellite Image Analysis Assistant · ISRO Problem Statement 26167</p>
+        </div>
+        <div className={`gov-status ${live ? 'ok' : 'off'}`}>
+          <span className="dot" /> {status}
+        </div>
+      </header>
+
+      <main className="gov-main">
+        {/* LEFT: guided inputs */}
+        <section className="panel inputs" aria-label="Inputs">
+          <h2 className="step">Step 1 · Choose analysis type</h2>
+          <div className="mode-tabs" role="tablist">
+            {Object.entries(MODES).map(([key, v]) => (
+              <button key={key} role="tab" aria-selected={mode === key}
+                className={mode === key ? 'active' : ''}
+                onClick={() => { setMode(key); setResult(null); }}>
+                {v.label}
+              </button>
+            ))}
+          </div>
+          <p className="hint">{m.hint}</p>
+
+          <h2 className="step">Step 2 · Add image{m.need > 1 ? 's' : ''}</h2>
+          <label className="upload">
+            <input ref={fileInputRef} type="file" accept=".tif,.tiff,.png,.jpg,.jpeg" multiple onChange={handleFiles} />
+            <span className="upload-icon">⬆️</span>
+            <span><strong>Click to upload</strong><br /><small>GeoTIFF, TIFF, PNG or JPEG · up to 2 images</small></span>
+          </label>
+          <div className="thumbs">
+            {files.map((f, i) => (
+              <div className="thumb" key={i}>
+                <img src={previews[i]} alt={f.name} />
+                <div className="thumb-meta">
+                  <span title={f.name}>{f.name}</span>
+                  <button type="button" onClick={() => removeFile(i)}>Remove</button>
+                </div>
+              </div>
+            ))}
+            {!files.length && <div className="thumb-empty">No image added yet.</div>}
+          </div>
+
+          <h2 className="step">Step 3 · Ask a question</h2>
+          <div className="presets">
+            {m.presets.map((p) => (
+              <button key={p} type="button" className="preset" onClick={() => submit(p)} disabled={loading || !files.length}>
+                {p}
+              </button>
+            ))}
+          </div>
+          <textarea rows={2} value={query} placeholder="…or type your own question"
+            onChange={(e) => setQuery(e.target.value)} />
+          <div className="actions">
+            <button className="run" onClick={() => submit()} disabled={loading || !files.length}>
+              {loading ? 'Analysing…' : 'Run analysis'}
+            </button>
+            <button className="clear" onClick={clearAll}>Clear</button>
+          </div>
+        </section>
+
+        {/* RIGHT: plain-language results */}
+        <section className="panel results" aria-label="Results">
+          <h2 className="step">Result</h2>
+
+          <div className="images-row">
+            {files.map((f, i) => <figure key={i}><img src={previews[i]} alt={`input ${i + 1}`} /><figcaption>Input {i + 1}</figcaption></figure>)}
+            {evidenceImgs.map((e, i) => (
+              <figure key={`ev${i}`} className="evidence">
+                <img src={`data:image/png;base64,${e.image_b64}`} alt={e.label || 'evidence'} />
+                <figcaption>{e.label || 'Evidence overlay'}</figcaption>
+              </figure>
+            ))}
+            {!files.length && <div className="placeholder">Upload an image and ask a question to see results here.</div>}
+          </div>
+
+          {loading && <div className="answer-box loading">Running the analysis on your image… this can take a moment.</div>}
+
+          {result && !loading && (
+            <>
+              <div className="answer-box">
+                <div className="answer-label">Answer</div>
+                <p className="answer-text">{result.answer || 'No answer returned.'}</p>
+              </div>
+
+              <div className="facts">
+                <div><span>Task</span><strong>{taskLabels[result.task] || result.task || '—'}</strong></div>
+                <div><span>Model used</span><strong>{(result.tools_used || []).join(', ') || '—'}</strong></div>
+              </div>
+
+              {pct != null && (
+                <div className="confidence">
+                  <div className="conf-head"><span>{confidenceWord(pct)}</span><strong>{pct}%</strong></div>
+                  <div className="conf-bar"><span className={pct >= 80 ? 'hi' : pct >= 60 ? 'mid' : 'lo'} style={{ width: `${pct}%` }} /></div>
+                </div>
+              )}
+
+              {result.report_id && (
+                <button className="report" onClick={openReport}>⬇️ Download full report (PDF / HTML)</button>
+              )}
+
+              <button className="tech-toggle" onClick={() => setShowTech((v) => !v)}>
+                {showTech ? '▼ Hide technical details (audit trail)' : '▶ Show technical details (audit trail)'}
+              </button>
+              {showTech && (
+                <div className="tech">
+                  <div className="tech-block">
+                    <h3>How the system reached this answer</h3>
+                    <ol className="trace">
+                      {(result.trace || []).map((s, i) => (
+                        <li key={i}>
+                          <strong>{stageLabel(s.stage)}</strong>
+                          <span>{s.detail}</span>
+                          {s.data && Object.keys(s.data).length > 0 && (
+                            <details><summary>data</summary><pre>{JSON.stringify(s.data, null, 2)}</pre></details>
+                          )}
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
+                  <div className="tech-block">
+                    <h3>Available specialist models ({registry.length})</h3>
+                    <ul className="models">
+                      {registry.map((t) => <li key={t.name}><strong>{t.name}</strong> — {t.input_type} · {(t.tasks || []).join(', ')}</li>)}
+                    </ul>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </section>
+      </main>
+
+      <footer className="gov-footer">
+        <span>SatQuery AI · Agentic Vision–Language Assistant for Remote Sensing</span>
+        <span>ISRO / SAC · Problem Statement 26167 · Prototype</span>
+      </footer>
+    </div>
+  );
 }
+
 export default App;
