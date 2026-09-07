@@ -20,7 +20,9 @@
 /* Keep the application chrome available while workspace content scrolls. */
 .app-header { position: sticky; top: 0; z-index: 20; }
 .app-footer { position: sticky; bottom: 0; z-index: 20; background: #101820; }
-.brand-logo { width: 30px; height: 30px; flex: 0 0 30px; object-fit: contain; }
+.brand-logo { width: 154px; height: 52px; flex: 0 0 154px; object-fit: contain; content: url('/sqa-logo-dark.png'); }
+.brand > div { display: none; }
+@media (prefers-color-scheme: light) { .brand-logo { content: url('/sqa-logo-light.png'); } }
 .viewer-toolbar > .map-actions { margin-left: auto; }
 
 @media (min-width: 1121px) {

@@ -15,6 +15,8 @@ function Icon({ name, size = 16 }) {
     external: <><path d="M14 4h6v6M20 4l-9 9" /><path d="M18 13v5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h5" /></>,
     check: <path d="m5 12 4 4L19 6" />,
     chevron: <path d="m6 9 6 6 6-6" />,
+    sun: <><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.65 17.65l1.42 1.42M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.65 6.35l1.42-1.42" /></>,
+    moon: <path d="M20.5 14.5A8.5 8.5 0 0 1 9.5 3.5 8.5 8.5 0 1 0 20.5 14.5Z" />,
   };
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name] || paths.target}</svg>;
 }
@@ -47,8 +49,23 @@ function AnalysisPanel({ result, loading, registry, onReport }) { const task = r
 function Timeline({ files }) { return <div className="timeline"><div className="timeline-label"><span className="eyebrow">SCENE NAVIGATION</span><strong>{files.length > 1 ? 'Bi-temporal comparison' : 'Temporal context'}</strong></div><div className="timeline-track"><span className="timeline-line" />{[0, 1, 2].map((point) => <span className={`timeline-point ${point < files.length ? 'selected' : ''}`} key={point} style={{ left: `${18 + point * 32}%` }}><i />{point < files.length ? `SCENE ${String(point + 1).padStart(2, '0')}` : 'AVAILABLE'}</span>)}</div><div className="comparison-mode"><button type="button" className="active">SINGLE VIEW</button><button type="button" disabled>SPLIT VIEW</button></div></div>; }
 
 function App() {
-  const fileInputRef = useRef(null); const [files, setFiles] = useState([]); const [query, setQuery] = useState(''); const [status, setStatus] = useState('CHECKING'); const [registry, setRegistry] = useState([]); const [result, setResult] = useState(null); const [loading, setLoading] = useState(false);
+  const fileInputRef = useRef(null); const [files, setFiles] = useState([]); const [query, setQuery] = useState(''); const [status, setStatus] = useState('CHECKING'); const [registry, setRegistry] = useState([]); const [result, setResult] = useState(null); const [loading, setLoading] = useState(false); const [theme, setTheme] = useState(() => localStorage.getItem('northstar-theme') || 'dark');
   useEffect(() => { loadHealth(); loadRegistry(); }, []);
+  useEffect(() => { localStorage.setItem('northstar-theme', theme); }, [theme]);
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    const headerStatus = document.querySelector('.header-status');
+    if (!headerStatus) return undefined;
+    const toggle = document.createElement('button');
+    toggle.type = 'button';
+    toggle.className = 'theme-toggle';
+    toggle.textContent = theme === 'dark' ? 'LIGHT MODE' : 'DARK MODE';
+    toggle.setAttribute('aria-label', `Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`);
+    toggle.title = toggle.getAttribute('aria-label');
+    toggle.addEventListener('click', () => setTheme((current) => current === 'dark' ? 'light' : 'dark'));
+    headerStatus.prepend(toggle);
+    return () => toggle.remove();
+  }, [theme]);
   useEffect(() => { const onKeyDown = (event) => { if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') { event.preventDefault(); handleSubmit(); } if (event.key === 'Escape') clearWorkspace(); }; window.addEventListener('keydown', onKeyDown); return () => window.removeEventListener('keydown', onKeyDown); });
   async function loadHealth() { try { const response = await fetch('/api/health'); const data = await response.json(); setStatus(data.mock_mode ? 'MOCK MODE' : 'LIVE MODELS'); } catch { setStatus('OFFLINE'); } }
   async function loadRegistry() { try { const response = await fetch('/api/registry'); const data = await response.json(); setRegistry(data.tools || []); } catch { setRegistry([]); } }
