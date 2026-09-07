@@ -40,6 +40,52 @@ def render_bbox(arr: np.ndarray, box: list[float], label: str = "") -> str:
     return _encode(img)
 
 
+def to_norm_rgb(arr: np.ndarray) -> np.ndarray:
+    """arr -> float32 HxWx3 in [0,1], per-channel 2-98% contrast stretch."""
+    a = arr.astype(np.float32)
+    if a.ndim == 2:
+        a = a[..., None]
+    a = a[..., :3] if a.shape[2] >= 3 else np.repeat(a[..., :1], 3, axis=2)
+    out = np.empty(a.shape[:2] + (3,), dtype=np.float32)
+    for i in range(3):
+        c = a[..., i]
+        lo, hi = np.percentile(c, 2), np.percentile(c, 98)
+        hi = hi if hi > lo else lo + 1.0
+        out[..., i] = np.clip((c - lo) / (hi - lo), 0, 1)
+    return out
+
+
+def resize_to(arr: np.ndarray, hw: tuple[int, int]) -> np.ndarray:
+    """Resize a float[0,1] HxWx3 (or HxW) array to (h, w)."""
+    h, w = hw
+    if arr.shape[0] == h and arr.shape[1] == w:
+        return arr
+    mode_arr = (np.clip(arr, 0, 1) * 255).astype(np.uint8)
+    im = Image.fromarray(mode_arr)
+    im = im.resize((w, h))
+    return np.asarray(im).astype(np.float32) / 255.0
+
+
+def otsu_threshold(x: np.ndarray) -> tuple[float, float]:
+    """Otsu threshold for values in [0,1]. Returns (threshold, separability 0..1)."""
+    hist, edges = np.histogram(x.ravel(), bins=256, range=(0.0, 1.0))
+    hist = hist.astype(np.float64)
+    total = hist.sum()
+    if total == 0:
+        return 0.5, 0.0
+    p = hist / total
+    omega = np.cumsum(p)
+    mids = (edges[:-1] + edges[1:]) / 2
+    mu = np.cumsum(p * mids)
+    mu_t = mu[-1]
+    denom = omega * (1 - omega)
+    denom[denom == 0] = 1e-12
+    sigma_b = (mu_t * omega - mu) ** 2 / denom
+    idx = int(np.nanargmax(sigma_b))
+    sep = float(np.clip(sigma_b[idx] / (x.var() + 1e-9), 0, 1))
+    return float(mids[idx]), sep
+
+
 def render_boxes(arr: np.ndarray, boxes: list[list[float]], label: str = "") -> str:
     """Draw zero or more [x0,y0,x1,y1] pixel boxes on the image (one overlay).
     With an empty list it just returns the scene, so grounding always has a
