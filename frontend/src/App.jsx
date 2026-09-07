@@ -120,9 +120,7 @@ function App() {
     <div className="page">
       <div className="tricolor" />
       <header className="gov-header">
-        <div className="gov-emblem" aria-hidden="true">
-          <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#10508a" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="7" /><path d="M2 12h20" /><path d="M12 5c3 2.6 3 11.4 0 14M12 5c-3 2.6-3 11.4 0 14" /></svg>
-        </div>
+        <div className="gov-emblem" aria-hidden="true">🛰️</div>
         <div className="gov-title">
           <h1>SatQuery AI</h1>
           <p>Satellite Image Analysis Assistant · ISRO Problem Statement 26167</p>
