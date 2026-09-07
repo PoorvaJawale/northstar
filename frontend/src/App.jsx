@@ -120,7 +120,9 @@ function App() {
     <div className="page">
       <div className="tricolor" />
       <header className="gov-header">
-        <div className="gov-emblem" aria-hidden="true">🛰️</div>
+        <div className="gov-emblem" aria-hidden="true">
+          <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#10508a" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="7" /><path d="M2 12h20" /><path d="M12 5c3 2.6 3 11.4 0 14M12 5c-3 2.6-3 11.4 0 14" /></svg>
+        </div>
         <div className="gov-title">
           <h1>SatQuery AI</h1>
           <p>Satellite Image Analysis Assistant · ISRO Problem Statement 26167</p>
@@ -148,7 +150,7 @@ function App() {
           <h2 className="step">Step 2 · Add image{m.need > 1 ? 's' : ''}</h2>
           <label className="upload">
             <input ref={fileInputRef} type="file" accept=".tif,.tiff,.png,.jpg,.jpeg" multiple onChange={handleFiles} />
-            <span className="upload-icon">⬆️</span>
+            <span className="upload-icon" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#10508a" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 16V4" /><path d="m7 9 5-5 5 5" /><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" /></svg></span>
             <span><strong>Click to upload</strong><br /><small>GeoTIFF, TIFF, PNG or JPEG · up to 2 images</small></span>
           </label>
           <div className="thumbs">
@@ -219,11 +221,11 @@ function App() {
               )}
 
               {result.report_id && (
-                <button className="report" onClick={openReport}>⬇️ Download full report (PDF / HTML)</button>
+                <button className="report" onClick={openReport}>Download full report (PDF / HTML)</button>
               )}
 
               <button className="tech-toggle" onClick={() => setShowTech((v) => !v)}>
-                {showTech ? '▼ Hide technical details (audit trail)' : '▶ Show technical details (audit trail)'}
+                {showTech ? 'Hide technical details (audit trail)' : 'Show technical details (audit trail)'}
               </button>
               {showTech && (
                 <div className="tech">
