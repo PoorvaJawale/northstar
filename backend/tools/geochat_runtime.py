@@ -16,10 +16,60 @@ editable in .venv311 — plus torch/transformers==4.31.0. Import is lazy so the
 app still runs in MOCK mode without any of this.
 """
 from __future__ import annotations
+import os
 from typing import Optional
 
 import numpy as np
 from PIL import Image
+
+
+def _install_low_vram_offload(cap: str) -> None:
+    """Cap GPU memory for the GeoChat load so overflow layers spill to CPU RAM,
+    preventing CUDA OOM on small cards (e.g. 6 GB). Patches the model class's
+    from_pretrained to inject `max_memory`. Kept in OUR code (no edit to the
+    GeoChat clone). Active only when GEOCHAT_MAX_GPU_MEM is set.
+      cap = "auto"  -> leave ~1.8 GB headroom, offload the rest
+      cap = "3.5GiB" -> explicit GPU cap
+    """
+    import torch
+    if not cap or not torch.cuda.is_available():
+        return
+    from geochat.model.language_model.geochat_llama import GeoChatLlamaForCausalLM
+    if getattr(GeoChatLlamaForCausalLM, "_low_vram_patched", False):
+        return
+    orig = GeoChatLlamaForCausalLM.from_pretrained.__func__
+
+    def _resolve() -> str:
+        if cap.lower() != "auto":
+            return cap
+        free_b, _total = torch.cuda.mem_get_info()
+        gib = max(2.0, free_b / (1024 ** 3) - 1.8)  # headroom for vision tower + activations
+        return f"{gib:.1f}GiB"
+
+    def patched(cls, *args, **kw):
+        if "max_memory" not in kw and torch.cuda.is_available():
+            free_gib = torch.cuda.mem_get_info()[0] / (1024 ** 3)
+            if free_gib >= 5.2:
+                # Enough VRAM for the whole model — load fully on GPU (fast, no
+                # fragile CPU offload). Prevents a stale GEOCHAT_MAX_GPU_MEM from
+                # wrongly forcing offload when the GPU is actually free.
+                print(f"[low-vram] {free_gib:.1f} GiB free -> loading fully on GPU (no offload)")
+            else:
+                resolved = _resolve()
+                kw["max_memory"] = {0: resolved, "cpu": "64GiB"}
+                # 4-bit modules on CPU need this flag, else transformers raises
+                # "Some modules are dispatched on the CPU ...".
+                qc = kw.get("quantization_config")
+                if qc is not None:
+                    try:
+                        qc.llm_int8_enable_fp32_cpu_offload = True
+                    except Exception:
+                        pass
+                print(f"[low-vram] only {free_gib:.1f} GiB free -> capping GPU at {resolved}, overflow -> CPU")
+        return orig(cls, *args, **kw)
+
+    GeoChatLlamaForCausalLM.from_pretrained = classmethod(patched)
+    GeoChatLlamaForCausalLM._low_vram_patched = True
 
 
 def numpy_to_pil_rgb(arr: np.ndarray) -> Image.Image:
@@ -50,6 +100,11 @@ class GeoChatRunner:
         self.torch = torch
         self.device = device
         self.conv_mode = conv_mode
+        # NOTE: CPU offload (max_memory) is intentionally DISABLED — transformers
+        # 4.31 + bitsandbytes 4-bit cannot reliably dispatch quantized modules to
+        # CPU (raises "Some modules are dispatched on the CPU ..."). GeoChat is
+        # loaded fully on the GPU; ensure ~5 GB VRAM is free (close Ollama / spare
+        # GPU apps). This is the configuration that works on the 6 GB card.
         model_name = get_model_name_from_path(model_path)
         # model_base=None -> loads the full geochat-7B checkpoint
         self.tokenizer, self.model, self.image_processor, self.context_len = \
@@ -96,7 +151,7 @@ class GeoChatRunner:
 
         with torch.inference_mode():
             out = self.model.generate(
-                input_ids, images=image_tensor,
+                input_ids=input_ids, images=image_tensor,
                 do_sample=temperature > 0, temperature=temperature,
                 max_new_tokens=max_new_tokens, use_cache=True,
                 stopping_criteria=[stopping],

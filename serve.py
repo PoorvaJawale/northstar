@@ -21,10 +21,22 @@ import os
 os.environ.setdefault("SATQUERY_MOCK", "0")
 os.environ.setdefault("GEOCHAT_MODEL", r"D:\SIH2026\models\geochat-7B")
 
+# Auto-load the fine-tuned LoRA adapter if it's present, so the demo is one
+# command (no need to export LORA_ADAPTER). Needs peft==0.4.0 installed.
+_adapter = r"D:\SIH2026\models\geochat-rsvqa-lora"
+if os.path.isdir(_adapter):
+    os.environ.setdefault("LORA_ADAPTER", _adapter)
+
+# On a 6 GB GPU, keep the Ollama LLM router off so it can't contend for VRAM
+# with GeoChat; the fallback classifier handles task routing fine.
+os.environ.setdefault("SATQUERY_USE_LLM", "0")
+
 if __name__ == "__main__":
     import uvicorn
 
-    port = int(os.environ.get("SATQUERY_PORT", "8000"))
+    port = int(os.environ.get("SATQUERY_PORT", "8010"))
     mock = os.environ.get("SATQUERY_MOCK", "0") == "1"
-    print(f"[serve] mode={'MOCK' if mock else 'LIVE'}  model={os.environ['GEOCHAT_MODEL']}  http://127.0.0.1:{port}")
+    adapter = os.environ.get("LORA_ADAPTER", "") or "(none — base GeoChat)"
+    print(f"[serve] mode={'MOCK' if mock else 'LIVE'}  model={os.environ['GEOCHAT_MODEL']}")
+    print(f"[serve] adapter={adapter}  http://127.0.0.1:{port}")
     uvicorn.run("backend.main:app", host="127.0.0.1", port=port, log_level="info")
