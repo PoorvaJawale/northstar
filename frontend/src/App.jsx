@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 
 // Guided, plain-language modes so non-expert users (field officers, farmers,
 // IMD/disaster staff) don't have to know how to phrase an agentic query.
@@ -59,6 +61,61 @@ function confidenceWord(pct) {
   return 'Limited confidence';
 }
 
+function LiveIndiaMap() {
+  const mapContainerRef = useRef(null);
+  const getIndiaHour = () => Number(new Intl.DateTimeFormat('en-IN', {
+    timeZone: 'Asia/Kolkata',
+    hour: 'numeric',
+    hour12: false,
+  }).format(new Date()));
+  const [night, setNight] = useState(() => {
+    const hour = getIndiaHour();
+    return hour < 6 || hour >= 18;
+  });
+
+  useEffect(() => {
+    const updateTimeOfDay = () => {
+      const hour = getIndiaHour();
+      setNight(hour < 6 || hour >= 18);
+    };
+    const timer = window.setInterval(updateTimeOfDay, 60 * 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    if (!mapContainerRef.current) return undefined;
+
+    const map = L.map(mapContainerRef.current, {
+      center: [22.5937, 78.9629],
+      zoom: 5,
+      zoomControl: false,
+      attributionControl: true,
+      dragging: false,
+      scrollWheelZoom: false,
+      doubleClickZoom: false,
+      boxZoom: false,
+      keyboard: false,
+      tap: false,
+    });
+
+    const tileUrl = night
+      ? 'https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_CityLights_2012/default/2012-01-01/GoogleMapsCompatible_Level8/{z}/{y}/{x}.jpg'
+      : 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+    L.tileLayer(tileUrl, {
+      attribution: night ? 'NASA GIBS / VIIRS' : 'Tiles © Esri',
+      maxZoom: 8,
+    }).addTo(map);
+
+    return () => map.remove();
+  }, [night]);
+
+  return <div className={`map-backdrop ${night ? 'is-night' : 'is-day'}`} aria-hidden="true">
+    <div ref={mapContainerRef} className="map-canvas" />
+    <div className="map-atmosphere" />
+    <div className="map-caption">{night ? 'NASA VIIRS NIGHT LIGHTS' : 'INDIA SATELLITE BASEMAP'} · IST {night ? 'NIGHT' : 'DAY'}</div>
+  </div>;
+}
+
 function App() {
   const fileInputRef = useRef(null);
   const [mode, setMode] = useState('single');
@@ -89,7 +146,12 @@ function App() {
     if (fileInputRef.current) fileInputRef.current.value = '';
   }
   function removeFile(i) { setFiles((c) => c.filter((_, k) => k !== i)); }
-  function clearAll() { setFiles([]); setQuery(''); setResult(null); setLoading(false); }
+  function clearAll() { setFiles([]); setQuery(''); setResult(null); setLoading(false); if (fileInputRef.current) fileInputRef.current.value = ''; }
+  function replaceImageSet() {
+    if (!window.confirm('Replace both uploaded images and start a new comparison?')) return;
+    clearAll();
+    window.setTimeout(() => fileInputRef.current?.click(), 0);
+  }
 
   async function submit(q) {
     const text = (q ?? query).trim();
@@ -118,6 +180,7 @@ function App() {
 
   return (
     <div className="page">
+      <LiveIndiaMap />
       <div className="tricolor" />
       <header className="gov-header">
         <div className="gov-emblem" aria-hidden="true">🛰️</div>
@@ -133,52 +196,53 @@ function App() {
       <main className="gov-main">
         {/* LEFT: guided inputs */}
         <section className="panel inputs" aria-label="Inputs">
-          <h2 className="step">Step 1 · Choose analysis type</h2>
-          <div className="mode-tabs" role="tablist">
-            {Object.entries(MODES).map(([key, v]) => (
-              <button key={key} role="tab" aria-selected={mode === key}
-                className={mode === key ? 'active' : ''}
-                onClick={() => { setMode(key); setResult(null); }}>
-                {v.label}
-              </button>
-            ))}
+          <div className="step-box">
+            <h2 className="step">Step 1 · Choose analysis type</h2>
+            <div className="mode-tabs" role="tablist">
+              {Object.entries(MODES).map(([key, v]) => (
+                <button key={key} role="tab" aria-selected={mode === key}
+                  className={mode === key ? 'active' : ''}
+                  onClick={() => { setMode(key); setResult(null); }}>
+                  {v.label}
+                </button>
+              ))}
+            </div>
+            <p className="hint">{m.hint}</p>
           </div>
-          <p className="hint">{m.hint}</p>
 
-          <h2 className="step">Step 2 · Add image{m.need > 1 ? 's' : ''}</h2>
-          <label className="upload">
-            <input ref={fileInputRef} type="file" accept=".tif,.tiff,.png,.jpg,.jpeg" multiple onChange={handleFiles} />
-            <span className="upload-icon" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#10508a" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 16V4" /><path d="m7 9 5-5 5 5" /><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" /></svg></span>
-            <span><strong>Click to upload</strong><br /><small>GeoTIFF, TIFF, PNG or JPEG · up to 2 images</small></span>
-          </label>
-          <div className="thumbs">
-            {files.map((f, i) => (
-              <div className="thumb" key={i}>
+          <div className="step-box">
+            <h2 className="step">Step 2 · Add image{m.need > 1 ? 's' : ''}</h2>
+            <input id="scene-upload" ref={fileInputRef} className="file-input" type="file" accept=".tif,.tiff,.png,.jpg,.jpeg" multiple onChange={handleFiles} />
+            {!files.length ? <label htmlFor="scene-upload" className="upload">
+              <span className="upload-icon" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 16V4" /><path d="m7 9 5-5 5 5" /><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" /></svg></span>
+              <span><strong>Click to upload</strong><br /><small>GeoTIFF, TIFF, PNG or JPEG · up to 2 images</small></span>
+            </label> : <div className="uploaded-scenes">
+              {files.map((f, i) => <div className="thumb" key={i}>
                 <img src={previews[i]} alt={f.name} />
-                <div className="thumb-meta">
-                  <span title={f.name}>{f.name}</span>
-                  <button type="button" onClick={() => removeFile(i)}>Remove</button>
-                </div>
-              </div>
-            ))}
-            {!files.length && <div className="thumb-empty">No image added yet.</div>}
+                <button type="button" className="thumb-remove" aria-label={`Remove ${f.name}`} onClick={() => removeFile(i)}>×</button>
+                <span className="thumb-name" title={f.name}>{f.name}</span>
+              </div>)}
+              {files.length < 2 ? <button type="button" className="add-image" aria-label="Add another image" onClick={() => fileInputRef.current?.click()}>+</button> : <button type="button" className="replace-set" onClick={replaceImageSet}><span aria-hidden="true">↻</span> New set</button>}
+            </div>}
           </div>
 
-          <h2 className="step">Step 3 · Ask a question</h2>
-          <div className="presets">
-            {m.presets.map((p) => (
-              <button key={p} type="button" className="preset" onClick={() => submit(p)} disabled={loading || !files.length}>
-                {p}
+          <div className="step-box">
+            <h2 className="step">Step 3 · Ask a question</h2>
+            <div className="presets">
+              {m.presets.map((p) => (
+                <button key={p} type="button" className="preset" onClick={() => submit(p)} disabled={loading || !files.length}>
+                  {p}
+                </button>
+              ))}
+            </div>
+            <textarea rows={2} value={query} placeholder="…or type your own question"
+              onChange={(e) => setQuery(e.target.value)} />
+            <div className="actions">
+              <button className="run" onClick={() => submit()} disabled={loading || !files.length}>
+                {loading ? 'Analysing…' : 'Run analysis'}
               </button>
-            ))}
-          </div>
-          <textarea rows={2} value={query} placeholder="…or type your own question"
-            onChange={(e) => setQuery(e.target.value)} />
-          <div className="actions">
-            <button className="run" onClick={() => submit()} disabled={loading || !files.length}>
-              {loading ? 'Analysing…' : 'Run analysis'}
-            </button>
-            <button className="clear" onClick={clearAll}>Clear</button>
+              <button className="clear" onClick={clearAll}>Clear</button>
+            </div>
           </div>
         </section>
 
