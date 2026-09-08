@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
+import IndiaBackground from './IndiaBackground';
 
 // Guided, plain-language modes so non-expert users (field officers, farmers,
 // IMD/disaster staff) don't have to know how to phrase an agentic query.
@@ -59,61 +58,6 @@ function confidenceWord(pct) {
   if (pct >= 80) return 'High confidence';
   if (pct >= 60) return 'Moderate confidence';
   return 'Limited confidence';
-}
-
-function LiveIndiaMap() {
-  const mapContainerRef = useRef(null);
-  const getIndiaHour = () => Number(new Intl.DateTimeFormat('en-IN', {
-    timeZone: 'Asia/Kolkata',
-    hour: 'numeric',
-    hour12: false,
-  }).format(new Date()));
-  const [night, setNight] = useState(() => {
-    const hour = getIndiaHour();
-    return hour < 6 || hour >= 18;
-  });
-
-  useEffect(() => {
-    const updateTimeOfDay = () => {
-      const hour = getIndiaHour();
-      setNight(hour < 6 || hour >= 18);
-    };
-    const timer = window.setInterval(updateTimeOfDay, 60 * 1000);
-    return () => window.clearInterval(timer);
-  }, []);
-
-  useEffect(() => {
-    if (!mapContainerRef.current) return undefined;
-
-    const map = L.map(mapContainerRef.current, {
-      center: [22.5937, 78.9629],
-      zoom: 5,
-      zoomControl: false,
-      attributionControl: true,
-      dragging: false,
-      scrollWheelZoom: false,
-      doubleClickZoom: false,
-      boxZoom: false,
-      keyboard: false,
-      tap: false,
-    });
-
-    const tileUrl = night
-      ? 'https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_CityLights_2012/default/2012-01-01/GoogleMapsCompatible_Level8/{z}/{y}/{x}.jpg'
-      : 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
-    L.tileLayer(tileUrl, {
-      attribution: night ? 'NASA GIBS / VIIRS' : 'Tiles © Esri',
-      maxZoom: 8,
-    }).addTo(map);
-
-    return () => map.remove();
-  }, [night]);
-
-  return <div className={`map-backdrop ${night ? 'is-night' : 'is-day'}`} aria-hidden="true">
-    <div ref={mapContainerRef} className="map-canvas" />
-    <div className="map-atmosphere" />
-    <div className="map-caption">{night ? 'NASA VIIRS NIGHT LIGHTS' : 'INDIA SATELLITE BASEMAP'} · IST {night ? 'NIGHT' : 'DAY'}</div>
-  </div>;
 }
 
 function App() {
@@ -180,7 +124,7 @@ function App() {
 
   return (
     <div className="page">
-      <LiveIndiaMap />
+      <IndiaBackground />
       <div className="tricolor" />
       <header className="gov-header">
         <div className="gov-emblem" aria-hidden="true">🛰️</div>

@@ -30,14 +30,15 @@ button { font-family: inherit; cursor: pointer; }
 .page { position: relative; z-index: 1; height: 100dvh; min-height: 0; display: flex; flex-direction: column; overflow: hidden; background: transparent; }
 .tricolor { height: 4px; background: linear-gradient(90deg, var(--saffron) 0 33.3%, #ffffff 33.3% 66.6%, var(--green) 66.6% 100%); }
 
-/* Live India-centered satellite context behind the workspace. */
-.map-backdrop { position: fixed; z-index: 0; inset: 0; overflow: hidden; background: #182b3b; }
-.map-canvas { position: absolute; inset: 0; }
-.map-canvas .leaflet-tile { filter: saturate(1.05) contrast(1.02) brightness(.9); }
-.map-atmosphere { position: absolute; inset: 0; pointer-events: none; background: transparent; }
-.is-night .map-canvas .leaflet-tile { filter: saturate(1.15) contrast(1.12) brightness(.8); }
-.map-canvas .leaflet-control-attribution { font-size: 9px; opacity: .72; }
-.map-caption { position: absolute; right: 14px; bottom: 8px; z-index: 400; color: rgba(255,255,255,.7); font: 10px/1.2 'JetBrains Mono', monospace; letter-spacing: .08em; text-shadow: 0 1px 3px #07131f; pointer-events: none; }
+/* Decorative India Earth-observation backdrop — static images, no map library,
+   no tiles, no animation loop. Transitions fire only when the IST phase changes. */
+.india-bg { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; background: #0a141d; }
+.india-bg-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center; transition: opacity 16s ease, filter 16s ease; }
+.india-bg-warm { position: absolute; inset: 0; background: #7a4a1e; mix-blend-mode: soft-light; transition: opacity 16s ease; }
+.india-bg-overlay { position: absolute; inset: 0; transition: background 16s ease; }
+.india-bg-label { position: absolute; right: 14px; bottom: 10px; text-align: right; color: rgba(230,238,245,.68);
+  font: 10px/1.4 'JetBrains Mono', monospace; letter-spacing: .09em; text-shadow: 0 1px 3px #04121f; }
+.india-bg-label b { color: #cfe0ee; font-weight: 600; letter-spacing: .05em; }
 
 /* Header */
 .gov-header {
