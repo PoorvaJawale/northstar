@@ -40,6 +40,27 @@ button { font-family: inherit; cursor: pointer; }
   font: 10px/1.4 'JetBrains Mono', monospace; letter-spacing: .09em; text-shadow: 0 1px 3px #04121f; }
 .india-bg-label b { color: #cfe0ee; font-weight: 600; letter-spacing: .05em; }
 
+/* Result image expand-on-hover + full-screen zoom viewer */
+.img-wrap { position: relative; display: inline-block; line-height: 0; }
+.expand-btn { position: absolute; top: 6px; right: 6px; width: 28px; height: 28px; display: grid; place-items: center;
+  border: none; border-radius: 6px; background: rgba(8, 16, 24, .72); color: #fff; opacity: 0; cursor: pointer;
+  transition: opacity .15s ease, background .15s ease; }
+.img-wrap:hover .expand-btn, .expand-btn:focus-visible { opacity: 1; }
+.expand-btn:hover { background: rgba(8, 16, 24, .92); }
+
+.viewer-overlay { position: fixed; inset: 0; z-index: 1000; background: rgba(3, 8, 12, .93); display: flex; flex-direction: column; }
+.viewer-toolbar { display: flex; align-items: center; gap: 8px; padding: 10px 14px; background: rgba(10, 18, 26, .9); border-bottom: 1px solid rgba(255,255,255,.1); }
+.viewer-toolbar button { min-width: 34px; height: 32px; padding: 0 12px; border: 1px solid rgba(255,255,255,.22); border-radius: 6px;
+  background: rgba(255,255,255,.06); color: #eaf1f7; font-size: 15px; font-weight: 600; }
+.viewer-toolbar button:hover { background: rgba(255,255,255,.16); }
+.viewer-name { color: #cfe0ee; font-size: 13px; font-weight: 600; max-width: 50vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.viewer-spacer { flex: 1; }
+.viewer-pct { color: #9fb4c6; font: 12px 'JetBrains Mono', monospace; min-width: 46px; text-align: center; }
+.viewer-close { color: #ffd7d0 !important; border-color: rgba(255,120,100,.4) !important; }
+.viewer-stage { flex: 1; overflow: hidden; display: grid; place-items: center; }
+.viewer-stage img { max-width: 92vw; max-height: 78vh; object-fit: contain; user-select: none; -webkit-user-drag: none; }
+.viewer-hint { text-align: center; padding: 8px; color: #7f93a5; font: 11px 'JetBrains Mono', monospace; letter-spacing: .06em; }
+
 /* Header */
 .gov-header {
   display: flex; align-items: center; gap: 14px;

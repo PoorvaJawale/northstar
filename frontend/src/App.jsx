@@ -60,6 +60,62 @@ function confidenceWord(pct) {
   return 'Limited confidence';
 }
 
+// A result image with a hover "expand" control that opens the zoom viewer.
+function ResultImage({ src, caption, evidence, onExpand }) {
+  return (
+    <figure className={evidence ? 'evidence' : undefined}>
+      <div className="img-wrap">
+        <img src={src} alt={caption} />
+        <button type="button" className="expand-btn" aria-label="Expand image"
+          onClick={() => onExpand({ src, label: caption })}>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" /></svg>
+        </button>
+      </div>
+      <figcaption>{caption}</figcaption>
+    </figure>
+  );
+}
+
+// Full-screen zoom viewer: scroll to zoom, drag to pan, buttons, Esc / backdrop to close.
+function ImageViewer({ src, label, onClose }) {
+  const [scale, setScale] = useState(1);
+  const [pos, setPos] = useState({ x: 0, y: 0 });
+  const drag = useRef(null);
+
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  const zoomBy = (factor) => setScale((s) => Math.min(8, Math.max(1, +(s * factor).toFixed(3))));
+  const onWheel = (e) => { zoomBy(e.deltaY > 0 ? 0.9 : 1.1); };
+  const onDown = (e) => { if (scale > 1) drag.current = { x: e.clientX - pos.x, y: e.clientY - pos.y }; };
+  const onMove = (e) => { if (drag.current) setPos({ x: e.clientX - drag.current.x, y: e.clientY - drag.current.y }); };
+  const onUp = () => { drag.current = null; };
+  const reset = () => { setScale(1); setPos({ x: 0, y: 0 }); };
+
+  return (
+    <div className="viewer-overlay" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="viewer-toolbar" onMouseDown={(e) => e.stopPropagation()}>
+        <span className="viewer-name">{label}</span>
+        <span className="viewer-spacer" />
+        <button type="button" onClick={() => zoomBy(1.25)} aria-label="Zoom in">+</button>
+        <span className="viewer-pct">{Math.round(scale * 100)}%</span>
+        <button type="button" onClick={() => zoomBy(0.8)} aria-label="Zoom out">−</button>
+        <button type="button" onClick={reset}>Reset</button>
+        <button type="button" className="viewer-close" onClick={onClose}>✕ Close</button>
+      </div>
+      <div className="viewer-stage" onWheel={onWheel} onMouseDown={onDown} onMouseMove={onMove}
+        onMouseUp={onUp} onMouseLeave={onUp}>
+        <img src={src} alt={label || ''} draggable="false"
+          style={{ transform: `translate(${pos.x}px, ${pos.y}px) scale(${scale})`, cursor: scale > 1 ? 'grab' : 'default' }} />
+      </div>
+      <div className="viewer-hint">Scroll to zoom · drag to pan · Esc to close</div>
+    </div>
+  );
+}
+
 function App() {
   const fileInputRef = useRef(null);
   const [mode, setMode] = useState('single');
@@ -71,6 +127,7 @@ function App() {
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [showTech, setShowTech] = useState(false);
+  const [viewer, setViewer] = useState(null);
 
   useEffect(() => { loadHealth(); loadRegistry(); }, []);
 
@@ -195,12 +252,10 @@ function App() {
           <h2 className="step">Result</h2>
 
           <div className="images-row">
-            {files.map((f, i) => <figure key={i}><img src={previews[i]} alt={`input ${i + 1}`} /><figcaption>Input {i + 1}</figcaption></figure>)}
+            {files.map((f, i) => <ResultImage key={i} src={previews[i]} caption={`Input ${i + 1}`} onExpand={setViewer} />)}
             {evidenceImgs.map((e, i) => (
-              <figure key={`ev${i}`} className="evidence">
-                <img src={`data:image/png;base64,${e.image_b64}`} alt={e.label || 'evidence'} />
-                <figcaption>{e.label || 'Evidence overlay'}</figcaption>
-              </figure>
+              <ResultImage key={`ev${i}`} evidence src={`data:image/png;base64,${e.image_b64}`}
+                caption={e.label || 'Evidence overlay'} onExpand={setViewer} />
             ))}
             {!files.length && <div className="placeholder">Upload an image and ask a question to see results here.</div>}
           </div>
@@ -266,6 +321,8 @@ function App() {
         <span>SatQuery AI · Agentic Vision–Language Assistant for Remote Sensing</span>
         <span>ISRO / SAC · Problem Statement 26167 · Prototype</span>
       </footer>
+
+      {viewer && <ImageViewer src={viewer.src} label={viewer.label} onClose={() => setViewer(null)} />}
     </div>
   );
 }
