@@ -1,40 +1,17 @@
 import { useEffect, useRef, useState } from 'react';
 import IndiaBackground from './IndiaBackground';
 
-// Guided, plain-language modes so non-expert users (field officers, farmers,
-// IMD/disaster staff) don't have to know how to phrase an agentic query.
-const MODES = {
-  single: {
-    label: 'Single image',
-    hint: 'Upload ONE satellite image.',
-    need: 1,
-    presets: [
-      'Is there a water body in this image?',
-      'Is this a rural or an urban area?',
-      'Describe the land cover and major objects.',
-      'Highlight the buildings.',
-      'Highlight the water body.',
-    ],
-  },
-  change: {
-    label: 'Compare two dates',
-    hint: 'Upload TWO images of the SAME area from different dates.',
-    need: 2,
-    presets: [
-      'What changed between these two dates and where?',
-      'Has the built-up area increased or decreased?',
-    ],
-  },
-  fusion: {
-    label: 'Optical + Radar (SAR)',
-    hint: 'Upload an OPTICAL image and a SAR (radar) image of the same area.',
-    need: 2,
-    presets: [
-      'Use the optical and SAR images to identify built-up and water.',
-      'Where is the water in this scene?',
-    ],
-  },
-};
+// Plain-language starter questions. The agent auto-detects the task
+// (single image / bi-temporal change / optical-SAR fusion) from what's
+// uploaded — the user never has to pick a mode.
+const PRESETS = [
+  'Is there a water body in this image?',
+  'Is this a rural or an urban area?',
+  'Describe the land cover and major objects.',
+  'Highlight the buildings.',
+  'What changed between these two dates and where?',
+  'Use the optical and SAR images to identify built-up and water.',
+];
 
 const taskLabels = {
   single_vqa: 'Question answering',
@@ -118,7 +95,6 @@ function ImageViewer({ src, label, onClose }) {
 
 function App() {
   const fileInputRef = useRef(null);
-  const [mode, setMode] = useState('single');
   const [files, setFiles] = useState([]);
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState('checking');
@@ -172,7 +148,6 @@ function App() {
     if (result?.report_id) window.open(`/api/report/${result.report_id}`, '_blank', 'noopener,noreferrer');
   }
 
-  const m = MODES[mode];
   const previews = files.map((f, i) => result?.input_config?.images?.[i]?.preview_png_b64
     ? `data:image/png;base64,${result.input_config.images[i].preview_png_b64}`
     : URL.createObjectURL(f));
@@ -198,21 +173,8 @@ function App() {
         {/* LEFT: guided inputs */}
         <section className="panel inputs" aria-label="Inputs">
           <div className="step-box">
-            <h2 className="step">Step 1 · Choose analysis type</h2>
-            <div className="mode-tabs" role="tablist">
-              {Object.entries(MODES).map(([key, v]) => (
-                <button key={key} role="tab" aria-selected={mode === key}
-                  className={mode === key ? 'active' : ''}
-                  onClick={() => { setMode(key); setResult(null); }}>
-                  {v.label}
-                </button>
-              ))}
-            </div>
-            <p className="hint">{m.hint}</p>
-          </div>
-
-          <div className="step-box">
-            <h2 className="step">Step 2 · Add image{m.need > 1 ? 's' : ''}</h2>
+            <h2 className="step">Step 1 · Add image(s)</h2>
+            <p className="hint">Upload one image, or two for change / optical–SAR analysis — the assistant detects the task automatically.</p>
             <input id="scene-upload" ref={fileInputRef} className="file-input" type="file" accept=".tif,.tiff,.png,.jpg,.jpeg" multiple onChange={handleFiles} />
             {!files.length ? <label htmlFor="scene-upload" className="upload">
               <span className="upload-icon" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 16V4" /><path d="m7 9 5-5 5 5" /><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" /></svg></span>
@@ -228,9 +190,9 @@ function App() {
           </div>
 
           <div className="step-box">
-            <h2 className="step">Step 3 · Ask a question</h2>
+            <h2 className="step">Step 2 · Ask a question</h2>
             <div className="presets">
-              {m.presets.map((p) => (
+              {PRESETS.map((p) => (
                 <button key={p} type="button" className="preset" onClick={() => submit(p)} disabled={loading || !files.length}>
                   {p}
                 </button>
