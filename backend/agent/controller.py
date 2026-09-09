@@ -109,9 +109,19 @@ class Controller:
 
         # 3) SELECT -------------------------------------------------------
         yield start("select")
-        specs = self.registry.find(task, cfg.input_type)
+        # A single-image question asked on a 2-image scene is answered on ONE
+        # image, instead of being forced into change/fusion just because two
+        # images were uploaded. Only genuine change/fusion questions use both.
+        SINGLE_TASKS = ("single_vqa", "single_caption", "single_grounding")
+        if task in SINGLE_TASKS and cfg.n_images > 1:
+            eff_input, exec_arrays = "single_image", arrays[:1]
+            route_note = "single-image question on a multi-image scene -> analysing image 1"
+        else:
+            eff_input, exec_arrays = cfg.input_type, arrays
+            route_note = None
+        specs = self.registry.find(task, eff_input)
         if not specs:
-            msg = f"No registered tool serves task={task} for input={cfg.input_type}"
+            msg = f"No registered tool serves task={task} for input={eff_input}"
             yield done(TraceStep(stage="select", detail=msg))
             yield _ev("result", response=QueryResponse(
                 query=query, task=task, input_config=cfg, trace=trace,
@@ -119,10 +129,11 @@ class Controller:
             return
         spec = specs[0]
         params = self.registry.filter_params(spec, user_params)   # permitted only
+        sel_data = {"candidates": [s.name for s in specs], "permitted_params": params}
+        if route_note:
+            sel_data["routing"] = route_note
         yield done(TraceStep(stage="select",
-            detail=f"selected tool={spec.name}",
-            data={"candidates": [s.name for s in specs],
-                  "permitted_params": params}))
+            detail=f"selected tool={spec.name}", data=sel_data))
 
         # 4) EXECUTE ------------------------------------------------------
         yield start("execute", f"Running {spec.name} on your imagery")
@@ -130,7 +141,7 @@ class Controller:
         # worker thread and pushes fine-grained progress ("loading weights",
         # "generating…") through a queue we drain live while it works.
         logs: list[TraceStep] = []
-        for event in self._execute(spec, task, arrays, query, params):
+        for event in self._execute(spec, task, exec_arrays, query, params):
             if event["type"] == "log":
                 logs.append(TraceStep(stage="execute", kind="log",
                                       detail=event["message"], data=event["data"]))

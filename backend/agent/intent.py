@@ -24,10 +24,17 @@ VALID_TASKS: list[Task] = [
 ]
 
 # Which tasks are even possible for a given input type (constrains the LLM).
+# Pair inputs ALSO allow the single-image tasks: a user who uploaded two images
+# can still ask a single-image question ("describe this", "where are the roads")
+# — the controller then answers on one image instead of forcing change/fusion.
+# The change/fusion task is listed first so it stays the default when the query
+# is ambiguous, but any single-image intent in the query routes correctly.
 TASKS_BY_INPUT: dict[InputType, list[Task]] = {
     "single_image": ["single_vqa", "single_caption", "single_grounding"],
-    "bitemporal_pair": ["change_vqa", "change_map"],
-    "optical_sar_pair": ["cross_modal"],
+    "bitemporal_pair": ["change_vqa", "change_map",
+                        "single_vqa", "single_caption", "single_grounding"],
+    "optical_sar_pair": ["cross_modal",
+                        "single_vqa", "single_caption", "single_grounding"],
     "unknown": [],
 }
 
