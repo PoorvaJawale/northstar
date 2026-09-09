@@ -26,6 +26,7 @@ from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
 
 from . import config
 from .agent.controller import Controller
@@ -114,6 +115,111 @@ async def query(text: str = Form(...), images: list[UploadFile] = File(...)):
     resp = _controller.run(text, metas, arrays)
     _attach_report(resp)
     return resp.model_dump()
+
+
+# ---- conversational chat: upload the scene once, ask follow-ups on it -------
+# In-memory sessions: the decoded image(s) are cached so follow-up questions
+# skip re-uploading/re-decoding. Each message runs the same agent controller on
+# the cached scene, so any turn can be VQA, grounding, change, etc.
+_SESSIONS: dict[str, dict] = {}
+_SESSION_ORDER: list[str] = []
+_SESSION_CAP = 24
+
+
+def _remember_session(sid: str, data: dict) -> None:
+    _SESSIONS[sid] = data
+    _SESSION_ORDER.append(sid)
+    while len(_SESSION_ORDER) > _SESSION_CAP:
+        _SESSIONS.pop(_SESSION_ORDER.pop(0), None)
+
+
+class ChatIn(BaseModel):
+    session_id: str
+    message: str
+
+
+class SuggestIn(BaseModel):
+    session_id: str
+
+
+@app.post("/api/session")
+async def create_session(images: list[UploadFile] = File(...)):
+    """Upload the scene once; returns a session_id used for follow-up chat."""
+    metas, arrays = _ingest(images)
+    sid = uuid.uuid4().hex[:12]
+    _remember_session(sid, {"metas": metas, "arrays": arrays, "history": []})
+    return {"session_id": sid, "n_images": len(arrays)}
+
+
+@app.post("/api/chat")
+async def chat(body: ChatIn):
+    """A follow-up question on an existing session's scene."""
+    sess = _SESSIONS.get(body.session_id)
+    if sess is None:
+        raise HTTPException(404, "Session not found or expired — please re-upload the image.")
+    text = (body.message or "").strip()
+    if not text:
+        raise HTTPException(400, "Empty message.")
+    resp = _controller.run(text, sess["metas"], sess["arrays"])
+    _attach_report(resp)
+    sess["history"].append({"q": text, "a": resp.answer})
+    out = resp.model_dump()
+    out["session_id"] = body.session_id
+    return out
+
+
+_DEFAULT_SUGGESTIONS = [
+    "Describe the land cover and major objects.",
+    "Is there a water body in this image?",
+    "Is this a rural or an urban area?",
+    "Highlight the buildings.",
+]
+
+
+def _questions_from_caption(caption: str, two_images: bool) -> list[str]:
+    """Turn a scene caption into a few image-specific starter questions —
+    lightweight keyword rules, no extra model call."""
+    c = (caption or "").lower()
+    qs = ["Describe the land cover and major objects."]
+    def add(q):
+        if q not in qs:
+            qs.append(q)
+    if any(w in c for w in ("water", "river", "lake", "coast", "sea", "pond", "reservoir")):
+        add("Highlight the water body.")
+    if any(w in c for w in ("build", "urban", "city", "settlement", "house")):
+        add("Highlight the buildings.")
+    if any(w in c for w in ("road", "highway", "street")):
+        add("Where are the roads in this image?")
+    if any(w in c for w in ("forest", "vegetation", "tree", "crop", "field", "farm", "green", "agricultur")):
+        add("Is there significant vegetation or cropland?")
+    if any(w in c for w in ("build", "urban", "road", "water")):
+        add("Is this a rural or an urban area?")
+    if two_images:
+        add("What changed between these two images and where?")
+    for d in _DEFAULT_SUGGESTIONS:
+        if len(qs) >= 4:
+            break
+        add(d)
+    return qs[:4]
+
+
+@app.post("/api/suggest")
+async def suggest(body: SuggestIn):
+    """Suggest image-specific questions after upload (captions the first scene)."""
+    sess = _SESSIONS.get(body.session_id)
+    if sess is None:
+        raise HTTPException(404, "Session not found.")
+    two = len(sess["arrays"]) > 1
+    try:
+        cap = _controller.run("Describe the land cover and major objects in this image.",
+                              sess["metas"][:1], sess["arrays"][:1])
+        return {"suggestions": _questions_from_caption(cap.answer, two)}
+    except Exception:
+        traceback.print_exc()
+        base = list(_DEFAULT_SUGGESTIONS)
+        if two:
+            base.insert(0, "What changed between these two images and where?")
+        return {"suggestions": base[:4]}
 
 
 # ---- live SSE feed of the agent's execution ------------------------------
