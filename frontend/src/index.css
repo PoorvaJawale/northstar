@@ -324,3 +324,32 @@ textarea { background: #202020; border-color: #555; border-radius: 3px; }
 
 .img-wrap { position:relative; display:inline-block; line-height:0; }
 .img-wrap.evidence img { border:2px solid var(--saffron) !important; }
+
+/* ===== Workspace + chat integration (two-panel) ===== */
+.scene-panel { display:flex; flex-direction:column; gap:10px; overflow-y:auto; }
+.chat-panel { display:flex; flex-direction:column; gap:8px; min-height:0; }
+
+.upload-card { display:flex; flex-direction:column; align-items:center; gap:6px; text-align:center; padding:22px 16px; cursor:pointer; border:2px dashed rgba(255,255,255,.3); border-radius:10px; background:rgba(20,28,36,.55); color:#e8eef4; }
+.upload-card:hover { border-color:#3aa0ff; background:rgba(24,34,46,.72); }
+.upload-card .upload-icon { color:#7fb4e6; }
+.upload-card strong { font-size:15px; }
+.upload-card small { color:#9fb1c1; font-weight:400; font-size:12px; }
+
+.scene-list { display:flex; flex-direction:column; gap:10px; }
+.scene-item .img-wrap { display:block; width:100%; }
+.scene-item .img-wrap img { width:100%; height:auto; max-height:260px; object-fit:cover; border-radius:8px; border:1px solid rgba(255,255,255,.16); }
+.scene-meta { font-size:11px; color:#9fb1c1; margin-top:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+.section-title { display:flex; justify-content:space-between; align-items:center; margin-top:4px; padding-bottom:5px; border-bottom:1px solid rgba(255,255,255,.12); font:10px 'JetBrains Mono',monospace; letter-spacing:.1em; color:#aebdca; }
+.section-title .section-meta { color:#7f93a5; font-weight:400; }
+.models-mini { display:flex; flex-wrap:wrap; gap:6px; }
+.model-pill { display:inline-flex; align-items:center; gap:5px; padding:4px 9px; border-radius:14px; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.16); color:#dbe6f0; font-size:11.5px; }
+.model-pill .online-dot { width:6px; height:6px; border-radius:50%; background:#7be495; }
+
+.status-chip { font:10px 'JetBrains Mono',monospace; letter-spacing:.08em; padding:4px 9px; border-radius:12px; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.18); color:#bcd0e2; }
+.status-chip.status-running { color:#ffe0a3; border-color:rgba(255,200,120,.45); }
+.status-chip.status-complete { color:#b7f0c6; border-color:rgba(120,220,150,.45); }
+
+/* chat pieces sit inside the right panel */
+.chat-panel .chat-thread { flex:1 1 auto; min-height:0; overflow-y:auto; }
+.chat-panel .chat-inputbar, .chat-panel .suggest-row { flex:0 0 auto; }

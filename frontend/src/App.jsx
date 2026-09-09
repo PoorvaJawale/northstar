@@ -61,7 +61,6 @@ function ImageViewer({ src, label, onClose }) {
   );
 }
 
-// An image with a hover "expand" control that opens the zoom viewer.
 function ZoomImage({ src, caption, evidence, onExpand }) {
   return (
     <div className={`img-wrap${evidence ? ' evidence' : ''}`}>
@@ -86,9 +85,10 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState('checking');
   const [live, setLive] = useState(false);
+  const [registry, setRegistry] = useState([]);
   const [viewer, setViewer] = useState(null);
 
-  useEffect(() => { loadHealth(); }, []);
+  useEffect(() => { loadHealth(); loadRegistry(); }, []);
   useEffect(() => { threadRef.current?.scrollTo({ top: threadRef.current.scrollHeight, behavior: 'smooth' }); }, [messages, loading]);
 
   async function loadHealth() {
@@ -97,6 +97,10 @@ function App() {
       setLive(!d.mock_mode);
       setStatus(d.mock_mode ? 'Demo mode' : 'Live models connected');
     } catch { setLive(false); setStatus('Backend offline'); }
+  }
+  async function loadRegistry() {
+    try { const d = await (await fetch('/api/registry')).json(); setRegistry(d.tools || []); }
+    catch { setRegistry([]); }
   }
 
   async function startSession(fileList) {
@@ -147,6 +151,10 @@ function App() {
     } finally { setLoading(false); }
   }
 
+  function removeScene(i) {
+    // removing a scene invalidates the session; simplest is to reset
+    uploadNew();
+  }
   function uploadNew() {
     setFiles([]); setPreviews([]); setSessionId(null); setMessages([]); setSuggestions([]); setInput('');
     if (fileInputRef.current) fileInputRef.current.value = '';
@@ -172,86 +180,109 @@ function App() {
       <input id="scene-upload" ref={fileInputRef} className="file-input" type="file"
         accept=".tif,.tiff,.png,.jpg,.jpeg" multiple onChange={(e) => startSession(e.target.files)} />
 
-      <main className="chat-main">
-        {!hasScene ? (
-          <div className="chat-empty">
-            <label htmlFor="scene-upload" className="empty-card">
-              <span className="upload-icon" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M12 16V4" /><path d="m7 9 5-5 5 5" /><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" /></svg></span>
-              <strong>Add a satellite image to begin</strong>
-              <small>Upload one image, or two for change / optical–SAR analysis. GeoTIFF, TIFF, PNG or JPEG.</small>
-            </label>
-            <p className="empty-note">Then just ask questions in plain language — the assistant picks the right model automatically.</p>
+      <main className="gov-main">
+        {/* LEFT: scene / data workspace */}
+        <section className="panel scene-panel" aria-label="Scene">
+          <div className="panel-heading">
+            <div><span className="eyebrow">DATA</span><h2>Loaded scene</h2></div>
+            {hasScene && <span className="count-badge">{files.length}/2</span>}
           </div>
-        ) : (
-          <div className="chat-wrap">
-            <div className="chat-scenebar">
-              <span className="scene-tag">ANALYSING · {files.length > 1 ? `${files.length} scenes` : files[0].name}</span>
+
+          {!hasScene ? (
+            <label htmlFor="scene-upload" className="upload-card">
+              <span className="upload-icon" aria-hidden="true"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M12 16V4" /><path d="m7 9 5-5 5 5" /><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" /></svg></span>
+              <strong>Add a satellite image</strong>
+              <small>One image, or two for change / optical–SAR. GeoTIFF, TIFF, PNG, JPEG.</small>
+            </label>
+          ) : (
+            <>
+              <div className="scene-list">
+                {previews.map((src, i) => (
+                  <div className="scene-item" key={i}>
+                    <ZoomImage src={src} caption={files[i]?.name || `Scene ${i + 1}`} onExpand={setViewer} />
+                    <div className="scene-meta"><span title={files[i]?.name}>{files[i]?.name}</span></div>
+                  </div>
+                ))}
+              </div>
               <button type="button" className="upload-new" onClick={uploadNew}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 16V4" /><path d="m7 9 5-5 5 5" /><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" /></svg>
                 Upload new image
               </button>
-            </div>
-            <div className="scene-images">
-              {previews.map((src, i) => <ZoomImage key={i} src={src} caption={files[i]?.name || `Scene ${i + 1}`} onExpand={setViewer} />)}
-            </div>
+            </>
+          )}
 
-            <div className="chat-inputbar">
-              <input type="text" value={input} placeholder="Tell me what you want to know…"
-                onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') ask(); }} />
-              <button type="button" className="ask" onClick={() => ask()} disabled={loading || !input.trim()}>
-                {loading ? '…' : 'Ask'}
-              </button>
-            </div>
-
-            {(suggestions.length > 0 || suggestLoading) && (
-              <div className="suggest-row">
-                <span className="suggest-label">TRY ASKING</span>
-                {suggestLoading && !suggestions.length
-                  ? <span className="suggest-loading">reading the scene…</span>
-                  : suggestions.map((q) => (
-                    <button key={q} type="button" className="suggest-chip" onClick={() => ask(q)} disabled={loading}>{q}</button>
-                  ))}
-              </div>
-            )}
-
-            <div className="chat-thread" ref={threadRef}>
-              {messages.length === 0 && !loading && (
-                <div className="thread-hint">Ask a question above, or tap a suggestion, to start the conversation.</div>
-              )}
-              {messages.map((m, i) => m.role === 'user' ? (
-                <div className="msg user" key={i}><div className="bubble">{m.text}</div></div>
-              ) : (
-                <div className="msg bot" key={i}>
-                  <div className={`bubble${m.error ? ' error' : ''}`}>
-                    <p className="bot-answer">{m.text}</p>
-                    {m.evidence && m.evidence.length > 0 && (
-                      <div className="bot-evidence">
-                        {m.evidence.map((e, k) => <ZoomImage key={k} evidence src={`data:image/png;base64,${e.image_b64}`} caption={e.label || 'Evidence overlay'} onExpand={setViewer} />)}
-                      </div>
-                    )}
-                    {m.confidence != null && (() => { const pct = Math.round(Number(m.confidence) * 100); return (
-                      <div className="bot-conf">
-                        <span>{confidenceWord(pct)} · {pct}%</span>
-                        <div className="conf-bar"><span className={pct >= 80 ? 'hi' : pct >= 60 ? 'mid' : 'lo'} style={{ width: `${pct}%` }} /></div>
-                      </div>
-                    ); })()}
-                    {!m.error && (
-                      <details className="bot-details">
-                        <summary>Details · {taskLabels[m.task] || m.task || 'analysis'}{m.report_id ? '' : ''}</summary>
-                        <div className="bot-meta">Model: {(m.tools || []).join(', ') || '—'}</div>
-                        <ol className="trace">
-                          {(m.trace || []).map((s, k) => <li key={k}><strong>{stageLabel(s.stage)}</strong><span>{s.detail}</span></li>)}
-                        </ol>
-                        {m.report_id && <button type="button" className="report-mini" onClick={() => openReport(m.report_id)}>Download full report (PDF / HTML)</button>}
-                      </details>
-                    )}
-                  </div>
-                </div>
-              ))}
-              {loading && <div className="msg bot"><div className="bubble typing"><i /><i /><i /></div></div>}
-            </div>
+          <div className="section-title">SPECIALIST MODELS<span className="section-meta">{registry.length} online</span></div>
+          <div className="models-mini">
+            {(registry.length ? registry : [{ name: 'geochat' }, { name: 'change' }, { name: 'optical_sar' }]).map((t) => (
+              <span className="model-pill" key={t.name}><i className="online-dot" />{t.name}</span>
+            ))}
           </div>
-        )}
+        </section>
+
+        {/* RIGHT: conversational assistant */}
+        <section className="panel chat-panel" aria-label="Assistant">
+          <div className="panel-heading">
+            <div><span className="eyebrow">AI ASSISTANT</span><h2>Conversation</h2></div>
+            <span className={`status-chip ${loading ? 'status-running' : messages.length ? 'status-complete' : ''}`}>
+              {loading ? 'THINKING' : messages.length ? 'READY' : 'ASK ANYTHING'}
+            </span>
+          </div>
+
+          <div className="chat-thread" ref={threadRef}>
+            {!hasScene && <div className="thread-hint">Add a scene on the left, then ask questions here. Follow-ups stay in the same conversation.</div>}
+            {hasScene && messages.length === 0 && !loading && (
+              <div className="thread-hint">Ask a question below, or tap a suggestion, to start analysing this scene.</div>
+            )}
+            {messages.map((m, i) => m.role === 'user' ? (
+              <div className="msg user" key={i}><div className="bubble">{m.text}</div></div>
+            ) : (
+              <div className="msg bot" key={i}>
+                <div className={`bubble${m.error ? ' error' : ''}`}>
+                  <p className="bot-answer">{m.text}</p>
+                  {m.evidence && m.evidence.length > 0 && (
+                    <div className="bot-evidence">
+                      {m.evidence.map((e, k) => <ZoomImage key={k} evidence src={`data:image/png;base64,${e.image_b64}`} caption={e.label || 'Evidence overlay'} onExpand={setViewer} />)}
+                    </div>
+                  )}
+                  {m.confidence != null && (() => { const pct = Math.round(Number(m.confidence) * 100); return (
+                    <div className="bot-conf">
+                      <span>{confidenceWord(pct)} · {pct}%</span>
+                      <div className="conf-bar"><span className={pct >= 80 ? 'hi' : pct >= 60 ? 'mid' : 'lo'} style={{ width: `${pct}%` }} /></div>
+                    </div>
+                  ); })()}
+                  {!m.error && (
+                    <details className="bot-details">
+                      <summary>Details · {taskLabels[m.task] || m.task || 'analysis'}</summary>
+                      <div className="bot-meta">Model: {(m.tools || []).join(', ') || '—'}</div>
+                      <ol className="trace">
+                        {(m.trace || []).map((s, k) => <li key={k}><strong>{stageLabel(s.stage)}</strong><span>{s.detail}</span></li>)}
+                      </ol>
+                      {m.report_id && <button type="button" className="report-mini" onClick={() => openReport(m.report_id)}>Download full report (PDF / HTML)</button>}
+                    </details>
+                  )}
+                </div>
+              </div>
+            ))}
+            {loading && <div className="msg bot"><div className="bubble typing"><i /><i /><i /></div></div>}
+          </div>
+
+          {hasScene && (suggestions.length > 0 || suggestLoading) && (
+            <div className="suggest-row">
+              <span className="suggest-label">TRY ASKING</span>
+              {suggestLoading && !suggestions.length
+                ? <span className="suggest-loading">reading the scene…</span>
+                : suggestions.map((q) => <button key={q} type="button" className="suggest-chip" onClick={() => ask(q)} disabled={loading}>{q}</button>)}
+            </div>
+          )}
+
+          <div className="chat-inputbar">
+            <input type="text" value={input} placeholder={hasScene ? 'Tell me what you want to know…' : 'Add an image first…'}
+              disabled={!hasScene} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') ask(); }} />
+            <button type="button" className="ask" onClick={() => ask()} disabled={loading || !hasScene || !input.trim()}>
+              {loading ? '…' : 'Ask'}
+            </button>
+          </div>
+        </section>
       </main>
 
       <footer className="gov-footer">
