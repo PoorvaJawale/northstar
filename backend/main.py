@@ -170,6 +170,7 @@ async def chat(body: ChatIn):
 
 _DEFAULT_SUGGESTIONS = [
     "Describe the land cover and major objects.",
+    "Predict flood risk and disaster impact from this SAR/optical scene.",
     "Is there a water body in this image?",
     "Is this a rural or an urban area?",
     "Highlight the buildings.",
@@ -186,6 +187,7 @@ def _questions_from_caption(caption: str, two_images: bool) -> list[str]:
             qs.append(q)
     if any(w in c for w in ("water", "river", "lake", "coast", "sea", "pond", "reservoir")):
         add("Highlight the water body.")
+        add("Predict flood risk and disaster impact from this scene.")
     if any(w in c for w in ("build", "urban", "city", "settlement", "house")):
         add("Highlight the buildings.")
     if any(w in c for w in ("road", "highway", "street")):

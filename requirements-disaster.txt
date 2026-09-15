@@ -1,0 +1,9 @@
+# Disaster SAR flood model training / ONNX inference
+# Install separately from requirements.txt because this stack is heavier.
+torch
+torchvision
+onnx
+onnxruntime
+tifffile
+tqdm
+requests

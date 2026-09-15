@@ -20,7 +20,7 @@ from ..schemas import Task, InputType
 
 VALID_TASKS: list[Task] = [
     "single_vqa", "single_caption", "single_grounding",
-    "change_vqa", "change_map", "cross_modal",
+    "change_vqa", "change_map", "cross_modal", "disaster_risk",
 ]
 
 # Which tasks are even possible for a given input type (constrains the LLM).
@@ -30,11 +30,11 @@ VALID_TASKS: list[Task] = [
 # The change/fusion task is listed first so it stays the default when the query
 # is ambiguous, but any single-image intent in the query routes correctly.
 TASKS_BY_INPUT: dict[InputType, list[Task]] = {
-    "single_image": ["single_vqa", "single_caption", "single_grounding"],
+    "single_image": ["disaster_risk", "single_vqa", "single_caption", "single_grounding"],
     "bitemporal_pair": ["change_vqa", "change_map",
-                        "single_vqa", "single_caption", "single_grounding"],
+                        "disaster_risk", "single_vqa", "single_caption", "single_grounding"],
     "optical_sar_pair": ["cross_modal",
-                        "single_vqa", "single_caption", "single_grounding"],
+                        "disaster_risk", "single_vqa", "single_caption", "single_grounding"],
     "unknown": [],
 }
 
@@ -51,6 +51,8 @@ _SYSTEM = (
     "(is there..., how many..., what is the..., yes/no).\n"
     "- change_vqa / change_map: what changed between two dated images.\n"
     "- cross_modal: combine the optical and SAR images.\n"
+    "- disaster_risk: disaster management, flood/cyclone/landslide/wildfire risk, "
+    "prediction, weather impact, rescue or damage assessment.\n"
     "If the query names an object to point out or mark, prefer single_grounding over "
     "single_caption. Reply with STRICT JSON only: "
     "{\"task\": \"<one of the allowed>\", \"reason\": \"...\"}. "
@@ -128,6 +130,9 @@ _HINTS: dict[Task, list[str]] = {
     "change_map": ["change map", "map of change", "mask", "where did"],
     "change_vqa": ["changed", "increase", "decrease", "between these", "over time", "difference"],
     "cross_modal": ["optical and sar", "sar and optical", "both images", "fuse", "combine", "together"],
+    "disaster_risk": ["disaster", "flood", "inundation", "weather", "prediction", "predict",
+                      "cyclone", "storm", "landslide", "wildfire", "risk", "damage",
+                      "rescue", "emergency", "affected"],
 }
 
 

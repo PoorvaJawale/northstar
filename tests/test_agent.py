@@ -66,6 +66,13 @@ def test_optical_sar_cross_modal(ctrl):
     assert r.ok and r.task == "cross_modal" and r.tools_used == ["optical_sar"]
 
 
+def test_disaster_management_routing(ctrl):
+    r = ctrl.run("Disaster management: predict flood risk and affected built-up area.",
+                 [_meta("sar.tif", modality="sar")], [_arr()])
+    assert r.ok and r.task == "disaster_risk" and r.tools_used == ["disaster"]
+    assert any(e.kind == "overlay" for e in r.evidence)
+
+
 def test_incompatible_change_with_one_image(ctrl):
     # asking for change but giving a single image must be refused, not crash
     r = ctrl.run("What changed between the two dates?",

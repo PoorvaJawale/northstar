@@ -8,6 +8,7 @@ const taskLabels = {
   change_vqa: 'Change detection',
   change_map: 'Change map',
   cross_modal: 'Optical + SAR fusion',
+  disaster_risk: 'Disaster risk prediction',
 };
 
 const stageLabel = (s) => ({

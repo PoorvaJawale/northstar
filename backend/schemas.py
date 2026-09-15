@@ -12,6 +12,7 @@ Task = Literal[
     "change_vqa",       # Change description / change-based VQA on a bi-temporal pair
     "change_map",       # Spatial change mask on a bi-temporal pair
     "cross_modal",      # Joint optical + SAR fusion analysis
+    "disaster_risk",    # Disaster risk / short-horizon prediction from SAR/optical cues
 ]
 
 InputType = Literal["single_image", "optical_sar_pair", "bitemporal_pair", "unknown"]

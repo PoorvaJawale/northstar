@@ -45,3 +45,17 @@ tools:
     allowed_params:
       target_classes: {type: list, default: [built_up, water]}
     outputs: [text, mask, overlay]
+
+  - name: disaster
+    module: backend.tools.disaster_tool
+    class: DisasterTool
+    tasks: [disaster_risk]
+    input_type: single_image
+    modalities: [optical, multispectral, sar]
+    allowed_params:
+      hazard: {type: str, default: flood}
+      rainfall_mm_24h: {type: float, default: null, min: 0.0, max: 500.0}
+      wind_kmph: {type: float, default: null, min: 0.0, max: 350.0}
+      lat: {type: float, default: null, min: -90.0, max: 90.0}
+      lon: {type: float, default: null, min: -180.0, max: 180.0}
+    outputs: [text, overlay]

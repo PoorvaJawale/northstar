@@ -113,7 +113,10 @@ class Controller:
         # image, instead of being forced into change/fusion just because two
         # images were uploaded. Only genuine change/fusion questions use both.
         SINGLE_TASKS = ("single_vqa", "single_caption", "single_grounding")
-        if task in SINGLE_TASKS and cfg.n_images > 1:
+        if task == "disaster_risk":
+            eff_input, exec_arrays = "single_image", arrays
+            route_note = "disaster risk accepts one scene and can use a second scene as supporting evidence"
+        elif task in SINGLE_TASKS and cfg.n_images > 1:
             eff_input, exec_arrays = "single_image", arrays[:1]
             route_note = "single-image question on a multi-image scene -> analysing image 1"
         else:
