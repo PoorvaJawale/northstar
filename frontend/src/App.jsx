@@ -76,36 +76,40 @@ function ZoomImage({ src, caption, evidence, onExpand }) {
 // ---- Geo evidence map: base scene + toggleable overlay layers -------------
 function LayerViewer({ scene, layers, onExpand }) {
   const base = scene && scene[0];
-  const [vis, setVis] = useState(() => layers.map((_, i) => i === 0));
-  const [op, setOp] = useState(() => layers.map(() => 0.9));
+  const [vis, setVis] = useState(() => layers.map(() => true));
+  const [showBase, setShowBase] = useState(false);   // reveal the plain scene
   if (!layers || !layers.length) return null;
   const toggle = (i) => setVis((v) => v.map((x, k) => (k === i ? !x : x)));
-  const setO = (i, val) => setOp((o) => o.map((x, k) => (k === i ? val : x)));
+  const topVisible = layers[vis.findIndex(Boolean) >= 0 ? vis.findIndex(Boolean) : 0];
   return (
     <div className="layer-viewer">
       <div className="layer-stage">
         {base && <img className="layer-base" src={base} alt="scene" />}
-        {layers.map((e, i) => (vis[i] ? (
-          <img key={i} className="layer-overlay" style={{ opacity: op[i] }}
-            src={`data:image/png;base64,${e.image_b64}`} alt={e.label || ''} />
+        {!showBase && layers.map((e, i) => (vis[i] ? (
+          <img key={i} className="layer-overlay" src={`data:image/png;base64,${e.image_b64}`} alt={e.label || ''} />
         ) : null))}
         <button type="button" className="layer-expand" aria-label="Expand"
-          onClick={() => { const t = vis.findIndex(Boolean); const e = layers[t >= 0 ? t : 0];
-            onExpand({ src: `data:image/png;base64,${e.image_b64}`, label: e.label }); }}>⤢</button>
+          onClick={() => onExpand({ src: `data:image/png;base64,${topVisible.image_b64}`, label: topVisible.label })}>⤢</button>
       </div>
       <div className="layer-controls">
-        {layers.map((e, i) => (
-          <div className={`layer-row${vis[i] ? ' on' : ''}`} key={i}>
-            <label className="layer-toggle">
-              <input type="checkbox" checked={vis[i]} onChange={() => toggle(i)} />
-              <span className="layer-swatch" style={{ background: e.color || '#38b6ff' }} />
-              <span className="layer-name">{e.label || `Layer ${i + 1}`}</span>
-              {e.area && <span className="layer-area">{e.area.area_ha != null ? `${e.area.area_ha} ha` : `${e.area.pct}%`}</span>}
-            </label>
-            {vis[i] && <input type="range" min="0.2" max="1" step="0.05" value={op[i]} className="layer-opacity"
-              onChange={(ev) => setO(i, Number(ev.target.value))} />}
-          </div>
+        {base && (
+          <label className="layer-toggle base-toggle">
+            <input type="checkbox" checked={showBase} onChange={() => setShowBase((s) => !s)} />
+            <span className="layer-name">Show base scene only</span>
+          </label>
+        )}
+        {layers.length > 1 && layers.map((e, i) => (
+          <label className={`layer-toggle${vis[i] ? ' on' : ''}`} key={i}>
+            <input type="checkbox" checked={vis[i]} disabled={showBase} onChange={() => toggle(i)} />
+            <span className="layer-swatch" style={{ background: e.color || '#38b6ff' }} />
+            <span className="layer-name">{e.label || `Layer ${i + 1}`}</span>
+            {e.area && <span className="layer-area">{e.area.area_ha != null ? `${e.area.area_ha} ha` : `${e.area.pct}%`}</span>}
+          </label>
         ))}
+        {layers.length === 1 && layers[0].area && (
+          <span className="layer-area single">{layers[0].label}
+            {' · '}{layers[0].area.area_ha != null ? `${layers[0].area.area_ha} ha` : `${layers[0].area.pct}%`}</span>
+        )}
       </div>
     </div>
   );
