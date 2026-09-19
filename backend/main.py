@@ -42,6 +42,13 @@ app.add_middleware(CORSMiddleware, allow_origins=config.CORS_ORIGINS,
 _registry = Registry()
 _controller = Controller(_registry)
 
+# Only ONE model inference runs at a time (GeoChat fills ~5.9GB of 6GB). Model
+# endpoints are sync `def` so FastAPI runs them in its threadpool: the event loop
+# (and fast endpoints like /api/registry, /api/health, /api/session) stay
+# responsive while an inference holds this lock — so the UI never shows "0 online"
+# just because a GeoChat query is running.
+_MODEL_LOCK = threading.Lock()
+
 
 @app.get("/api/health")
 def health():
@@ -110,9 +117,10 @@ def _attach_report(resp) -> None:
 
 
 @app.post("/api/query")
-async def query(text: str = Form(...), images: list[UploadFile] = File(...)):
+def query(text: str = Form(...), images: list[UploadFile] = File(...)):
     metas, arrays = _ingest(images)
-    resp = _controller.run(text, metas, arrays)
+    with _MODEL_LOCK:
+        resp = _controller.run(text, metas, arrays)
     _attach_report(resp)
     return resp.model_dump()
 
@@ -143,7 +151,7 @@ class SuggestIn(BaseModel):
 
 
 @app.post("/api/session")
-async def create_session(images: list[UploadFile] = File(...)):
+def create_session(images: list[UploadFile] = File(...)):
     """Upload the scene once; returns a session_id used for follow-up chat."""
     metas, arrays = _ingest(images)
     sid = uuid.uuid4().hex[:12]
@@ -152,7 +160,7 @@ async def create_session(images: list[UploadFile] = File(...)):
 
 
 @app.post("/api/chat")
-async def chat(body: ChatIn):
+def chat(body: ChatIn):
     """A follow-up question on an existing session's scene."""
     sess = _SESSIONS.get(body.session_id)
     if sess is None:
@@ -160,7 +168,8 @@ async def chat(body: ChatIn):
     text = (body.message or "").strip()
     if not text:
         raise HTTPException(400, "Empty message.")
-    resp = _controller.run(text, sess["metas"], sess["arrays"])
+    with _MODEL_LOCK:
+        resp = _controller.run(text, sess["metas"], sess["arrays"])
     _attach_report(resp)
     sess["history"].append({"q": text, "a": resp.answer})
     out = resp.model_dump()
@@ -206,15 +215,16 @@ def _questions_from_caption(caption: str, two_images: bool) -> list[str]:
 
 
 @app.post("/api/suggest")
-async def suggest(body: SuggestIn):
+def suggest(body: SuggestIn):
     """Suggest image-specific questions after upload (captions the first scene)."""
     sess = _SESSIONS.get(body.session_id)
     if sess is None:
         raise HTTPException(404, "Session not found.")
     two = len(sess["arrays"]) > 1
     try:
-        cap = _controller.run("Describe the land cover and major objects in this image.",
-                              sess["metas"][:1], sess["arrays"][:1])
+        with _MODEL_LOCK:
+            cap = _controller.run("Describe the land cover and major objects in this image.",
+                                  sess["metas"][:1], sess["arrays"][:1])
         return {"suggestions": _questions_from_caption(cap.answer, two)}
     except Exception:
         traceback.print_exc()
