@@ -150,6 +150,11 @@ class SuggestIn(BaseModel):
     session_id: str
 
 
+class PlanIn(BaseModel):
+    session_id: str
+    message: str
+
+
 @app.post("/api/session")
 def create_session(images: list[UploadFile] = File(...)):
     """Upload the scene once; returns a session_id used for follow-up chat."""
@@ -157,6 +162,31 @@ def create_session(images: list[UploadFile] = File(...)):
     sid = uuid.uuid4().hex[:12]
     _remember_session(sid, {"metas": metas, "arrays": arrays, "history": []})
     return {"session_id": sid, "n_images": len(arrays)}
+
+
+@app.post("/api/plan")
+def plan(body: PlanIn):
+    """Analysis Plan Preview: what the agent WOULD do for this question — the
+    detected task, chosen tool, pipeline steps and inputs — WITHOUT running the
+    model. Fast (no GPU): lets the UI show the plan before executing."""
+    sess = _SESSIONS.get(body.session_id)
+    if sess is None:
+        raise HTTPException(404, "Session not found or expired — please re-upload the image.")
+    text = (body.message or "").strip()
+    if not text:
+        raise HTTPException(400, "Empty message.")
+    return _controller.plan(text, sess["metas"]).model_dump()
+
+
+@app.get("/api/benchmark")
+def benchmark():
+    """Measured model numbers for the 'benchmark table' UI. Reads a JSON file so
+    the team can paste in Kaggle before/after eval numbers without a code change."""
+    bpath = config.ROOT / "backend" / "benchmark.json"
+    try:
+        return json.loads(bpath.read_text(encoding="utf-8"))
+    except Exception:
+        return {"note": "no benchmark data yet", "fine_tune": {}, "models": []}
 
 
 @app.post("/api/chat")

@@ -73,6 +73,154 @@ function ZoomImage({ src, caption, evidence, onExpand }) {
   );
 }
 
+// ---- Geo evidence map: base scene + toggleable overlay layers -------------
+function LayerViewer({ scene, layers, onExpand }) {
+  const base = scene && scene[0];
+  const [vis, setVis] = useState(() => layers.map((_, i) => i === 0));
+  const [op, setOp] = useState(() => layers.map(() => 0.9));
+  if (!layers || !layers.length) return null;
+  const toggle = (i) => setVis((v) => v.map((x, k) => (k === i ? !x : x)));
+  const setO = (i, val) => setOp((o) => o.map((x, k) => (k === i ? val : x)));
+  return (
+    <div className="layer-viewer">
+      <div className="layer-stage">
+        {base && <img className="layer-base" src={base} alt="scene" />}
+        {layers.map((e, i) => (vis[i] ? (
+          <img key={i} className="layer-overlay" style={{ opacity: op[i] }}
+            src={`data:image/png;base64,${e.image_b64}`} alt={e.label || ''} />
+        ) : null))}
+        <button type="button" className="layer-expand" aria-label="Expand"
+          onClick={() => { const t = vis.findIndex(Boolean); const e = layers[t >= 0 ? t : 0];
+            onExpand({ src: `data:image/png;base64,${e.image_b64}`, label: e.label }); }}>⤢</button>
+      </div>
+      <div className="layer-controls">
+        {layers.map((e, i) => (
+          <div className={`layer-row${vis[i] ? ' on' : ''}`} key={i}>
+            <label className="layer-toggle">
+              <input type="checkbox" checked={vis[i]} onChange={() => toggle(i)} />
+              <span className="layer-swatch" style={{ background: e.color || '#38b6ff' }} />
+              <span className="layer-name">{e.label || `Layer ${i + 1}`}</span>
+              {e.area && <span className="layer-area">{e.area.area_ha != null ? `${e.area.area_ha} ha` : `${e.area.pct}%`}</span>}
+            </label>
+            {vis[i] && <input type="range" min="0.2" max="1" step="0.05" value={op[i]} className="layer-opacity"
+              onChange={(ev) => setO(i, Number(ev.target.value))} />}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ---- Explainable confidence (named dimensions instead of one number) ------
+function ConfBreakdown({ breakdown, fallback }) {
+  const pct = (v) => Math.round(Number(v) * 100);
+  if (!breakdown) {
+    if (fallback == null) return null;
+    const p = pct(fallback);
+    return <div className="bot-conf"><span>{confidenceWord(p)} · {p}%</span>
+      <div className="conf-bar"><span className={p >= 80 ? 'hi' : p >= 60 ? 'mid' : 'lo'} style={{ width: `${p}%` }} /></div></div>;
+  }
+  const dims = [['Model', breakdown.model], ['Evidence quality', breakdown.evidence_quality],
+    ['Geospatial validity', breakdown.geospatial_validity]].filter(([, v]) => v != null);
+  const o = pct(breakdown.overall);
+  return (
+    <div className="conf-breakdown">
+      <div className="conf-overall"><strong>{confidenceWord(o)}</strong> · {o}%
+        <em className="conf-cal">{breakdown.calibration_state}</em></div>
+      {dims.map(([name, v]) => { const p = pct(v); return (
+        <div className="conf-dim" key={name}>
+          <span className="conf-dim-name">{name}</span>
+          <div className="conf-bar"><span className={p >= 80 ? 'hi' : p >= 60 ? 'mid' : 'lo'} style={{ width: `${p}%` }} /></div>
+          <span className="conf-dim-val">{p}%</span>
+        </div>); })}
+    </div>
+  );
+}
+
+// ---- CRS / GSD / overlap / area ribbon ------------------------------------
+function MetaRibbon({ alignment, area }) {
+  const chips = [];
+  if (alignment) {
+    if (alignment.aligned) {
+      if (alignment.target_crs) chips.push(alignment.target_crs);
+      if (alignment.gsd_m) chips.push(`${alignment.gsd_m} m/px`);
+      if (alignment.overlap_pct != null) chips.push(`${alignment.overlap_pct}% overlap`);
+    } else chips.push('pixel-grid · no CRS');
+  }
+  if (area) chips.push(area.area_ha != null ? `${area.area_ha} ha` : `${area.pct}% of scene`);
+  if (!chips.length) return null;
+  return <div className="meta-ribbon">{chips.map((c, i) => <span className="meta-chip" key={i}>{c}</span>)}</div>;
+}
+
+// ---- Evidence Explorer: the derivation chain behind an answer -------------
+function WhyPanel({ m }) {
+  const [open, setOpen] = useState(false);
+  const steps = [['Question', m.question || '—'],
+    ['Task · Model', `${taskLabels[m.task] || m.task} · ${(m.tools || []).join(', ') || '—'}`]];
+  if (m.alignment) steps.push(['Alignment', m.alignment.aligned
+    ? `${m.alignment.method} → ${m.alignment.target_crs}${m.alignment.overlap_pct != null ? `, ${m.alignment.overlap_pct}% overlap` : ''}`
+    : 'pixel-grid (inputs not georeferenced)']);
+  if (m.evidence && m.evidence.length) steps.push(['Evidence', m.evidence.map((e) => e.label).join('; ')]);
+  if (m.area) steps.push(['Measurement', m.area.area_ha != null
+    ? `${m.area.pixels.toLocaleString()} px × (${m.area.gsd_m} m)² = ${m.area.area_ha} ha`
+    : `${m.area.pixels.toLocaleString()} px = ${m.area.pct}% of scene`]);
+  if (m.breakdown && m.breakdown.reasons) steps.push(['Confidence', m.breakdown.reasons.join(' · ')]);
+  return (
+    <div className="why-panel">
+      <button type="button" className="why-toggle" onClick={() => setOpen((o) => !o)}>
+        {open ? '▾' : '▸'} Show me why</button>
+      {open && <ol className="why-chain">{steps.map(([k, v], i) => (
+        <li key={i}><span className="why-k">{k}</span><span className="why-v">{v}</span></li>))}</ol>}
+    </div>
+  );
+}
+
+// ---- Analysis Plan Preview (what the agent will do, before running) -------
+function PlanCard({ plan, loading, onRun, onClose }) {
+  if (!plan && !loading) return null;
+  return (
+    <div className="plan-card">
+      <div className="plan-head"><strong>Analysis plan</strong>
+        <button type="button" className="plan-x" onClick={onClose}>✕</button></div>
+      {loading ? <div className="plan-warn">planning…</div>
+        : !plan.compatible ? <div className="plan-warn">{plan.note || 'Cannot plan this input.'}</div> : (
+        <>
+          <div className="plan-row"><span>Intent</span><b>{taskLabels[plan.task] || plan.task}</b><em>via {plan.method}</em></div>
+          <div className="plan-row"><span>Tool</span><b>{plan.tool}</b></div>
+          <div className="plan-row"><span>Inputs</span>{plan.inputs.join(' · ')}</div>
+          <div className="plan-steps">{plan.pipeline.map((s, i) => <span className="plan-step" key={i}>{i + 1}. {s}</span>)}</div>
+          <div className="plan-foot"><span>~{plan.est_seconds}s</span>
+            <button type="button" className="plan-run" onClick={onRun}>Run analysis →</button></div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ---- Benchmark table (measured numbers) -----------------------------------
+function BenchmarkPanel({ data, open, onToggle }) {
+  if (!data) return null;
+  const ft = data.fine_tune || {};
+  return (
+    <>
+      <div className="section-title bench-head" onClick={onToggle}>BENCHMARKS
+        <span className="section-meta">{open ? '▾' : '▸'}</span></div>
+      {open && (
+        <div className="bench-panel">
+          <div className="bench-ft">Fine-tune: <b>{ft.train_samples_before}→{ft.train_samples_after}</b> samples ·
+            loss <b>{ft.loss_start}→{ft.loss_end}</b><br />
+            <em>{ft.accuracy_after != null ? `accuracy ${ft.accuracy_before}→${ft.accuracy_after}` : 'accuracy: pending eval'}</em></div>
+          <table className="bench-table"><tbody>
+            {(data.models || []).map((r, i) => (
+              <tr key={i}><td>{r.task}</td><td className="bench-model">{r.model}</td>
+                <td className="bench-num">{r.value != null ? r.value : '—'}</td></tr>))}
+          </tbody></table>
+        </div>
+      )}
+    </>
+  );
+}
+
 function App() {
   const fileInputRef = useRef(null);
   const threadRef = useRef(null);
@@ -88,8 +236,12 @@ function App() {
   const [live, setLive] = useState(false);
   const [registry, setRegistry] = useState([]);
   const [viewer, setViewer] = useState(null);
+  const [plan, setPlan] = useState(null);        // Analysis Plan Preview
+  const [planLoading, setPlanLoading] = useState(false);
+  const [benchmark, setBenchmark] = useState(null);
+  const [showBench, setShowBench] = useState(false);
 
-  useEffect(() => { loadHealth(); loadRegistry(); }, []);
+  useEffect(() => { loadHealth(); loadRegistry(); loadBenchmark(); }, []);
   useEffect(() => { threadRef.current?.scrollTo({ top: threadRef.current.scrollHeight, behavior: 'smooth' }); }, [messages, loading]);
 
   async function loadHealth() {
@@ -145,12 +297,34 @@ function App() {
         role: 'bot', text: d.answer || 'No answer returned.',
         evidence: (d.evidence || []).filter((e) => e.image_b64),
         task: d.task, tools: d.tools_used, confidence: d.confidence,
+        breakdown: d.confidence_breakdown, alignment: d.alignment, area: d.area,
+        scene: previews, question: text,
         trace: d.trace || [], report_id: d.report_id,
       }]);
     } catch (err) {
       setMessages((m) => [...m, { role: 'bot', text: `Request failed: ${err}`, error: true }]);
     } finally { setLoading(false); }
   }
+
+  async function loadBenchmark() {
+    try { setBenchmark(await (await fetch('/api/benchmark')).json()); } catch { /* ignore */ }
+  }
+
+  // Analysis Plan Preview: ask the backend what it WOULD do, without running the model
+  async function previewPlan() {
+    const text = input.trim();
+    if (!sessionId || !text) { setPlan(null); return; }
+    setPlanLoading(true);
+    try {
+      const d = await (await fetch('/api/plan', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_id: sessionId, message: text }),
+      })).json();
+      setPlan(d);
+    } catch { setPlan(null); }
+    finally { setPlanLoading(false); }
+  }
+  function runPlan() { const q = plan?.query; setPlan(null); ask(q); }
 
   function removeScene(i) {
     // removing a scene invalidates the session; simplest is to reset
@@ -218,6 +392,8 @@ function App() {
               <span className="model-pill" key={t.name}><i className="online-dot" />{t.name}</span>
             ))}
           </div>
+
+          <BenchmarkPanel data={benchmark} open={showBench} onToggle={() => setShowBench((s) => !s)} />
         </section>
 
         {/* RIGHT: conversational assistant */}
@@ -240,17 +416,14 @@ function App() {
               <div className="msg bot" key={i}>
                 <div className={`bubble${m.error ? ' error' : ''}`}>
                   <p className="bot-answer">{m.text}</p>
+                  <MetaRibbon alignment={m.alignment} area={m.area} />
                   {m.evidence && m.evidence.length > 0 && (
-                    <div className="bot-evidence">
-                      {m.evidence.map((e, k) => <ZoomImage key={k} evidence src={`data:image/png;base64,${e.image_b64}`} caption={e.label || 'Evidence overlay'} onExpand={setViewer} />)}
-                    </div>
+                    <LayerViewer scene={m.scene} layers={m.evidence} onExpand={setViewer} />
                   )}
-                  {m.confidence != null && (() => { const pct = Math.round(Number(m.confidence) * 100); return (
-                    <div className="bot-conf">
-                      <span>{confidenceWord(pct)} · {pct}%</span>
-                      <div className="conf-bar"><span className={pct >= 80 ? 'hi' : pct >= 60 ? 'mid' : 'lo'} style={{ width: `${pct}%` }} /></div>
-                    </div>
-                  ); })()}
+                  {!m.error && (m.breakdown || m.confidence != null) && (
+                    <ConfBreakdown breakdown={m.breakdown} fallback={m.confidence} />
+                  )}
+                  {!m.error && <WhyPanel m={m} />}
                   {!m.error && (
                     <details className="bot-details">
                       <summary>Details · {taskLabels[m.task] || m.task || 'analysis'}</summary>
@@ -276,9 +449,13 @@ function App() {
             </div>
           )}
 
+          {(plan || planLoading) && <PlanCard plan={plan} loading={planLoading} onRun={runPlan} onClose={() => setPlan(null)} />}
+
           <div className="chat-inputbar">
             <input type="text" value={input} placeholder={hasScene ? 'Tell me what you want to know…' : 'Add an image first…'}
               disabled={!hasScene} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') ask(); }} />
+            <button type="button" className="plan-btn" title="Preview the analysis plan before running"
+              onClick={previewPlan} disabled={loading || !hasScene || !input.trim()}>Plan</button>
             <button type="button" className="ask" onClick={() => ask()} disabled={loading || !hasScene || !input.trim()}>
               {loading ? '…' : 'Ask'}
             </button>

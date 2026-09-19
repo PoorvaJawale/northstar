@@ -169,8 +169,10 @@ class DisasterTool(Tool):
 
         self.emit("Calibrating risk and generating response",
                   risk_level=level, confidence=confidence)
-        ev = Evidence(kind="overlay", label=f"{hazard_text} risk overlay",
-                      image_b64=render_mask(base, overlay, color=(248, 113, 113)),
+        from ..geo.alignment import measure_area
+        area = measure_area(int((overlay > 0.05).sum()), int(overlay.size), None)
+        ev = Evidence(kind="heatmap", label=f"{hazard_text} risk overlay", color="#f87171",
+                      image_b64=render_mask(base, overlay, color=(248, 113, 113)), area=area,
                       data={"hazard": hazard, "risk_level": level,
                             "risk_score": round(float(risk), 3),
                             "flood_pct": round(flood_pct, 2),
@@ -188,7 +190,7 @@ class DisasterTool(Tool):
             "For higher accuracy in LIVE mode, plug a trained Sentinel-1 SAR flood "
             "segmentation model plus a weather nowcast feed into this disaster tool."
         )
-        return ToolResult(text=text, evidence=[ev], confidence=confidence,
+        return ToolResult(text=text, evidence=[ev], confidence=confidence, area=area,
                           tool_name=self.name, params_used=params)
 
     def _try_sar_flood_model(self, arr: np.ndarray) -> np.ndarray | None:

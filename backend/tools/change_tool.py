@@ -105,9 +105,12 @@ class ChangeTool(Tool):
             direction, interp = "similar in brightness", "a textural / mixed change"
 
         conf = round(float(np.clip(0.6 + 0.35 * sep, 0.5, 0.95)), 3)
+        from ..geo.alignment import measure_area
+        area = measure_area(int(mask.sum()), int(mask.size), None)  # gsd added by controller
         self.emit("Rendering the change overlay", location=where, direction=direction)
-        ev = Evidence(kind="change_map", label=f"change (~{pct:.0f}%)",
+        ev = Evidence(kind="change_map", label=f"change (~{pct:.0f}%)", color="#ff7a45",
                       image_b64=render_mask(images[0], mask),
+                      area=area,
                       data={"changed_pct": round(pct, 2), "threshold": round(thresh, 3),
                             "location": where, "direction": direction})
 
@@ -130,7 +133,7 @@ class ChangeTool(Tool):
                 text = (f"About {pct:.1f}% of the scene changed between the two dates, "
                         f"mainly in {where}. The changed areas are {direction} in the later "
                         f"image, {interp}.")
-        return ToolResult(text=text, evidence=[ev], confidence=conf,
+        return ToolResult(text=text, evidence=[ev], confidence=conf, area=area,
                           tool_name=self.name, params_used=params)
 
     # ---- MOCK inference (MOCK_MODE only) ---------------------------------

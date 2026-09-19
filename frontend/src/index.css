@@ -353,3 +353,69 @@ textarea { background: #202020; border-color: #555; border-radius: 3px; }
 /* chat pieces sit inside the right panel */
 .chat-panel .chat-thread { flex:1 1 auto; min-height:0; overflow-y:auto; }
 .chat-panel .chat-inputbar, .chat-panel .suggest-row { flex:0 0 auto; }
+
+/* ===== Evidence-first feature styles ===== */
+/* Geo evidence map + toggleable layers */
+.layer-viewer { margin-top:10px; border:1px solid #e2e8f0; border-radius:10px; overflow:hidden; background:#0f172a; }
+.layer-stage { position:relative; line-height:0; }
+.layer-base, .layer-overlay { width:100%; display:block; }
+.layer-overlay { position:absolute; inset:0; }
+.layer-expand { position:absolute; top:8px; right:8px; z-index:3; width:28px; height:28px; border-radius:6px;
+  border:1px solid rgba(255,255,255,.4); background:rgba(15,23,42,.6); color:#fff; cursor:pointer; font-size:14px; }
+.layer-controls { background:#f8fafc; padding:8px 10px; display:flex; flex-direction:column; gap:6px; }
+.layer-row { display:flex; align-items:center; gap:10px; font-size:12.5px; }
+.layer-toggle { display:flex; align-items:center; gap:7px; cursor:pointer; color:#334155; flex:0 0 auto; }
+.layer-swatch { width:12px; height:12px; border-radius:3px; border:1px solid rgba(0,0,0,.15); }
+.layer-name { font-weight:600; }
+.layer-area { color:#64748b; font:11px 'JetBrains Mono',monospace; }
+.layer-opacity { flex:1 1 auto; max-width:120px; accent-color:#2563eb; }
+
+/* Explainable confidence */
+.conf-breakdown { margin-top:10px; padding:9px 11px; background:#f1f5f9; border-radius:8px; }
+.conf-overall { font-size:13px; color:#0f172a; margin-bottom:6px; display:flex; align-items:center; gap:8px; }
+.conf-overall .conf-cal { margin-left:auto; font-style:normal; font:10px 'JetBrains Mono',monospace; color:#94a3b8; }
+.conf-dim { display:grid; grid-template-columns:120px 1fr 40px; align-items:center; gap:8px; margin:3px 0; }
+.conf-dim-name { font-size:11.5px; color:#475569; }
+.conf-dim-val { font:11px 'JetBrains Mono',monospace; color:#64748b; text-align:right; }
+.conf-breakdown .conf-bar { height:6px; background:#e2e8f0; border-radius:3px; overflow:hidden; }
+.conf-breakdown .conf-bar span { display:block; height:100%; }
+.conf-bar .hi { background:#16a34a; } .conf-bar .mid { background:#eab308; } .conf-bar .lo { background:#ef4444; }
+
+/* CRS / area ribbon */
+.meta-ribbon { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+.meta-chip { font:11px 'JetBrains Mono',monospace; color:#1e40af; background:#dbeafe;
+  border:1px solid #bfdbfe; border-radius:12px; padding:2px 9px; }
+
+/* Evidence Explorer */
+.why-panel { margin-top:8px; }
+.why-toggle { background:none; border:none; color:#2563eb; font-size:12.5px; font-weight:600; cursor:pointer; padding:2px 0; }
+.why-chain { list-style:none; margin:6px 0 0; padding:8px 10px; background:#0f172a; border-radius:8px; }
+.why-chain li { display:grid; grid-template-columns:110px 1fr; gap:10px; padding:4px 0; border-bottom:1px solid rgba(255,255,255,.08); }
+.why-chain li:last-child { border-bottom:none; }
+.why-k { font:10px 'JetBrains Mono',monospace; letter-spacing:.04em; color:#7dd3fc; text-transform:uppercase; }
+.why-v { font-size:12.5px; color:#e2e8f0; }
+
+/* Analysis Plan Preview */
+.plan-card { margin:8px 0; padding:11px 13px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:10px; }
+.plan-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; color:#1e3a8a; }
+.plan-x { background:none; border:none; cursor:pointer; color:#64748b; font-size:14px; }
+.plan-warn { font-size:12.5px; color:#b45309; }
+.plan-row { font-size:12.5px; color:#334155; margin:2px 0; display:flex; gap:8px; align-items:baseline; }
+.plan-row span { color:#64748b; min-width:52px; } .plan-row em { color:#94a3b8; font-size:11px; }
+.plan-steps { display:flex; flex-wrap:wrap; gap:5px; margin:8px 0; }
+.plan-step { font:10.5px 'JetBrains Mono',monospace; background:#dbeafe; color:#1e40af; border-radius:5px; padding:2px 7px; }
+.plan-foot { display:flex; justify-content:space-between; align-items:center; margin-top:6px; }
+.plan-foot span { font:11px 'JetBrains Mono',monospace; color:#64748b; }
+.plan-run { background:#2563eb; color:#fff; border:none; border-radius:7px; padding:6px 14px; font-weight:600; cursor:pointer; }
+.plan-btn { background:#fff; color:#2563eb; border:1px solid #bfdbfe; border-radius:8px; padding:0 12px; font-weight:600; cursor:pointer; }
+.plan-btn:disabled { opacity:.5; cursor:default; }
+
+/* Benchmark panel (dark scene panel) */
+.bench-head { cursor:pointer; }
+.bench-panel { background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.12); border-radius:8px; padding:9px 10px; }
+.bench-ft { font-size:11.5px; color:#dbe6f0; line-height:1.6; margin-bottom:7px; }
+.bench-ft em { color:#8ea0b2; font-style:normal; font:10px 'JetBrains Mono',monospace; }
+.bench-table { width:100%; border-collapse:collapse; }
+.bench-table td { font-size:11px; color:#cbd5e1; padding:3px 4px; border-top:1px solid rgba(255,255,255,.08); }
+.bench-model { color:#8ea0b2; }
+.bench-num { text-align:right; font:11px 'JetBrains Mono',monospace; color:#7be495; }

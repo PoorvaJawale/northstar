@@ -1,0 +1,21 @@
+{
+  "updated": "2026-09-19",
+  "note": "Measured where data exists. Accuracy rows marked null await the Kaggle before/after eval (notebook cells 10 and 13); paste those numbers here to fill the table.",
+  "fine_tune": {
+    "dataset": "RSVQA-LR (balanced across presence / count / comparison / rural-urban)",
+    "base_model": "GeoChat-7B",
+    "method": "QLoRA r=64, 4-bit, 1 epoch",
+    "train_samples_before": 150,
+    "train_samples_after": 3000,
+    "loss_start": 2.66,
+    "loss_end": 0.32,
+    "accuracy_before": null,
+    "accuracy_after": null
+  },
+  "models": [
+    {"task": "Single-image VQA", "model": "GeoChat (base)", "metric": "accuracy", "value": null, "status": "pending Kaggle eval (cell 10)"},
+    {"task": "Single-image VQA", "model": "GeoChat + LoRA (ours)", "metric": "accuracy", "value": null, "status": "pending Kaggle eval (cell 13)"},
+    {"task": "Change detection", "model": "Classical CVA + Otsu", "metric": "F1", "value": null, "status": "working baseline; benchmark pending"},
+    {"task": "Optical-SAR fusion", "model": "SAR backscatter threshold", "metric": "F1", "value": null, "status": "baseline; benchmark pending"}
+  ]
+}
