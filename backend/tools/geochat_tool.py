@@ -81,12 +81,12 @@ class GeoChatTool(Tool):
         self.emit("Model answered", chars=len(text), confidence=round(conf, 3))
 
         evidence = []
-        out_text = text
+        h, w = images[0].shape[0], images[0].shape[1]
+        boxes = self._parse_boxes(text, w, h)
+
         if task == "single_grounding":
             self.emit("Parsing the predicted bounding box(es)")
-            h, w = images[0].shape[0], images[0].shape[1]
             ref = self._referring_expression(query)
-            boxes = self._parse_boxes(text, w, h)
             if boxes:
                 self.emit("Drawing the box overlay", n=len(boxes),
                           boxes=[[round(v, 1) for v in b] for b in boxes])
@@ -104,8 +104,32 @@ class GeoChatTool(Tool):
                     kind="overlay", label=ref,
                     image_b64=render_boxes(images[0], [], ref),
                     data={"raw": text}))
+                out_text = self._clean_text(text) or f"Could not localise {ref} in the image."
+        else:
+            # VQA / caption: GeoChat sometimes grounds objects and emits box tokens
+            # ({<..>} groups, <NN> tokens, <p> tags). Strip them for a clean answer,
+            # and if it DID ground, draw the boxes so the image still appears.
+            out_text = self._clean_text(text)
+            if boxes:
+                self.emit("GeoChat grounded objects — drawing them on the image", n=len(boxes))
+                evidence.append(Evidence(
+                    kind="bbox", label="located objects",
+                    image_b64=render_boxes(images[0], boxes, ""),
+                    data={"boxes_xyxy": boxes, "raw": text}))
         return ToolResult(text=out_text, evidence=evidence, confidence=conf,
                           tool_name=self.name, params_used=params)
+
+    @staticmethod
+    def _clean_text(text: str) -> str:
+        """Strip GeoChat's grounding markup ({<x><y>...} box groups, stray <NN> /
+        <delim> tokens and <p> tags) so the displayed answer reads as plain text."""
+        import re
+        t = re.sub(r"</?p>", "", text or "")
+        t = re.sub(r"\{[^}]*\}", "", t)          # {<x0><y0><x1><y1>|<angle>} groups
+        t = re.sub(r"<[^>]*>", "", t)            # any remaining <..> tokens
+        t = re.sub(r"\s{2,}", " ", t)
+        t = t.replace(" .", ".").replace(" ,", ",").replace(" ;", ";")
+        return t.strip()
 
     @staticmethod
     def _referring_expression(query: str) -> str:
