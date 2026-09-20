@@ -247,6 +247,13 @@ function App() {
   const [showBench, setShowBench] = useState(false);
 
   useEffect(() => { loadHealth(); loadRegistry(); loadBenchmark(); }, []);
+  // Auto Analysis-Plan-Preview: as the user types (scene loaded), show what the
+  // agent WOULD do — debounced, model-free, so it never blocks.
+  useEffect(() => {
+    if (!sessionId || input.trim().length < 3 || loading) { setPlan(null); return; }
+    const id = setTimeout(() => { previewPlan(); }, 650);
+    return () => clearTimeout(id);
+  }, [input, sessionId, loading]);
   useEffect(() => { threadRef.current?.scrollTo({ top: threadRef.current.scrollHeight, behavior: 'smooth' }); }, [messages, loading]);
 
   async function loadHealth() {
@@ -289,7 +296,7 @@ function App() {
     const text = (q ?? input).trim();
     if (!sessionId) { alert('Please add an image first.'); return; }
     if (!text || loading) return;
-    setInput('');
+    setInput(''); setPlan(null);
     setMessages((m) => [...m, { role: 'user', text }]);
     setLoading(true);
     try {
