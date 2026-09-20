@@ -421,3 +421,10 @@ textarea { background: #202020; border-color: #555; border-radius: 3px; }
 .bench-table td { font-size:11px; color:#cbd5e1; padding:3px 4px; border-top:1px solid rgba(255,255,255,.08); }
 .bench-model { color:#8ea0b2; }
 .bench-num { text-align:right; font:11px 'JetBrains Mono',monospace; color:#7be495; }
+
+/* Explainable confidence — reasons + n/a dimensions */
+.conf-dim.na .conf-dim-name, .conf-dim.na .conf-dim-val { color:#94a3b8; }
+.conf-dim.na .conf-bar { opacity:.4; }
+.conf-reasons { margin:8px 0 0; padding:8px 10px 8px 24px; list-style:disc;
+  background:#eef2f7; border-radius:6px; }
+.conf-reasons li { font-size:11.5px; color:#475569; line-height:1.5; }
