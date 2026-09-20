@@ -22,10 +22,15 @@ def _band(x: float) -> str:
 
 def geospatial_validity(align: Optional[Alignment]) -> tuple[Optional[float], Optional[str]]:
     """Turn an alignment report into a 0..1 validity score + a reason string."""
-    if align is None or align.method == "single-image":
+    if align is None:
         return None, None
+    # single image: validity reflects whether we actually have geo-metadata
+    if align.method == "single-image":
+        if align.target_crs:
+            return 0.9, f"georeferenced ({align.target_crs})"
+        return 0.5, "no CRS — pixel measurements only, not geo-validated"
     if not align.aligned:
-        return 0.5, "inputs not georeferenced — spatial validity unverified"
+        return 0.5, "inputs not georeferenced — pixel-grid comparison, no CRS check"
     if align.overlap_pct is not None:
         v = round(max(0.0, min(1.0, align.overlap_pct / 100.0)), 3)
         return v, f"geographic overlap {align.overlap_pct:.0f}% ({align.target_crs})"

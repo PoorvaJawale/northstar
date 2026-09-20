@@ -125,20 +125,20 @@ function ConfBreakdown({ breakdown, fallback }) {
     return <div className="bot-conf"><span>{confidenceWord(p)} · {p}%</span>
       <div className="conf-bar"><span className={p >= 80 ? 'hi' : p >= 60 ? 'mid' : 'lo'} style={{ width: `${p}%` }} /></div></div>;
   }
-  // show all three dimensions; ones that don't apply to this task read "n/a"
+  // only the dimensions that actually apply to this task (no confusing "n/a" rows)
   const dims = [['Model', breakdown.model], ['Evidence quality', breakdown.evidence_quality],
-    ['Geospatial validity', breakdown.geospatial_validity]];
+    ['Geospatial validity', breakdown.geospatial_validity]].filter(([, v]) => v != null);
   const o = pct(breakdown.overall);
   const reasons = breakdown.reasons || [];
   return (
     <div className="conf-breakdown">
       <div className="conf-overall"><strong>{confidenceWord(o)}</strong> · {o}%
         <em className="conf-cal" title="These scores are not yet calibrated against ground-truth correctness">{breakdown.calibration_state}</em></div>
-      {dims.map(([name, v]) => { const na = v == null; const p = na ? 0 : pct(v); return (
-        <div className={`conf-dim${na ? ' na' : ''}`} key={name}>
+      {dims.map(([name, v]) => { const p = pct(v); return (
+        <div className="conf-dim" key={name}>
           <span className="conf-dim-name">{name}</span>
           <div className="conf-bar"><span className={p >= 80 ? 'hi' : p >= 60 ? 'mid' : 'lo'} style={{ width: `${p}%` }} /></div>
-          <span className="conf-dim-val">{na ? 'n/a' : `${p}%`}</span>
+          <span className="conf-dim-val">{p}%</span>
         </div>); })}
       {reasons.length > 0 && (
         <ul className="conf-reasons">
