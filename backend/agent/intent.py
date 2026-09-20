@@ -88,6 +88,19 @@ def _looks_like_measurement(query: str) -> bool:
     return bool(_MEASURE_RE.search(query or ""))
 
 
+# Deterministic guardrail: explicit change wording on a bi-temporal pair is a
+# change request — it must beat the generic single_vqa keywords ("what", "?").
+_CHANGE_RE = re.compile(
+    r"(?i)\b(chang(e|ed|es|ing)|increase[d]?|decreas(e|ed)|expand(ed|ing)?|"
+    r"grow(n|th)?|reduc(e|ed|tion)|difference|over\s+time|"
+    r"between\s+(the\s+|these\s+)?(two\s+)?(dates|images|scenes|periods)|"
+    r"before\s+and\s+after|new\s+(construction|development|buildings?))\b")
+
+
+def _looks_like_change(query: str) -> bool:
+    return bool(_CHANGE_RE.search(query or ""))
+
+
 def classify(query: str, input_type: InputType) -> tuple[Task, str, str]:
     """Return (task, method, note). method is 'llm' or 'fallback'."""
     allowed = TASKS_BY_INPUT.get(input_type, [])
@@ -108,6 +121,11 @@ def classify(query: str, input_type: InputType) -> tuple[Task, str, str]:
 
     if task is None:
         task = _fallback(query, allowed)
+
+    # guardrail: explicit change wording beats generic single_vqa keywords on a pair
+    if ("change_vqa" in allowed and task not in ("change_vqa", "change_map")
+            and _looks_like_change(query)):
+        task, note = "change_vqa", f"{note}; change-intent override"
 
     # guardrail: a measurement question ("how big is the cropland") must be answered
     # by segmentation+area, not a text model — but never steal a genuine

@@ -42,15 +42,21 @@ def inspect(metas: list[ImageMeta]) -> InputConfig:
                                modalities=modalities, images=metas,
                                compatible=False, issue=issue)
 
-    # dimension compatibility for pairs (must be co-located / same size-ish)
+    # dimension compatibility for pairs. Georeferenced pairs may differ in size /
+    # resolution — true co-registration reprojects them onto a common grid, so we
+    # do NOT reject those. Only non-georeferenced pairs (matched by pixel-grid
+    # resize) must be similar in size.
     if len(metas) == 2:
         a, b = metas
-        if abs(a.width - b.width) > max(a.width, b.width) * 0.25 or \
-           abs(a.height - b.height) > max(a.height, b.height) * 0.25:
+        both_geo = a.georeferenced and b.georeferenced
+        if not both_geo and (
+                abs(a.width - b.width) > max(a.width, b.width) * 0.25 or
+                abs(a.height - b.height) > max(a.height, b.height) * 0.25):
             return InputConfig(input_type=itype, n_images=2, modalities=modalities,
                                images=metas, compatible=False,
                                issue="The two images differ too much in size to be a "
-                                     "co-registered pair. Provide spatially aligned images.")
+                                     "co-registered pair. Provide spatially aligned images "
+                                     "(or georeferenced GeoTIFFs, which are auto-aligned).")
 
     if itype == "unknown":
         return InputConfig(input_type=itype, n_images=len(metas), modalities=modalities,

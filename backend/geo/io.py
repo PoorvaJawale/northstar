@@ -100,16 +100,18 @@ def read_image(path: str | Path) -> tuple[ImageMeta, np.ndarray]:
                 georef = ds.crs is not None
                 bounds = list(ds.bounds) if georef else None
                 fmt = "GeoTIFF" if georef else "TIFF"
-                crs_str, gsd = None, None
+                crs_str, gsd, tform = None, None, None
                 if georef:
                     epsg = ds.crs.to_epsg()
                     crs_str = f"EPSG:{epsg}" if epsg else ds.crs.to_string()
                     gsd = _ground_sample_distance(ds)
+                    tform = list(ds.transform)[:6]     # affine (a,b,c,d,e,f)
                 meta = ImageMeta(
                     filename=path.name, fmt=fmt,
                     width=ds.width, height=ds.height, bands=ds.count,
                     modality=_guess_modality(ds.count, path.name),
                     georeferenced=georef, bounds=bounds, crs=crs_str, gsd=gsd,
+                    transform=tform,
                     preview_png_b64=_to_preview_png_b64(arr),
                 )
                 return meta, arr

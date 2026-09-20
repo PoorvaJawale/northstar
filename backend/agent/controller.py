@@ -24,7 +24,7 @@ from .registry import Registry
 from . import intent as intent_mod
 from .inspector import inspect
 from .confidence import build_confidence
-from ..geo.alignment import compute_alignment, alignment_gsd
+from ..geo.alignment import compute_alignment, alignment_gsd, coregister
 from ..schemas import (QueryResponse, TraceStep, InputConfig, ImageMeta,
                        ToolResult, Evidence)
 
@@ -195,6 +195,18 @@ class Controller:
         yield done(TraceStep(stage="select",
             detail=f"selected tool={spec.name}", data=sel_data))
 
+        # 3b) CO-REGISTER — true pixel reprojection for multi-image tasks so the
+        # rasters are pixel-for-pixel comparable (falls back to pixel-grid + an
+        # honest report when the inputs aren't georeferenced).
+        if eff_input != "single_image" and len(exec_arrays) >= 2:
+            exec_arrays, alignment = coregister(cfg.images, exec_arrays)
+            trace.append(TraceStep(stage="select", kind="log",
+                detail="co-register: " + (alignment.note or alignment.method),
+                data={"method": alignment.method, "target_crs": alignment.target_crs,
+                      "overlap_pct": alignment.overlap_pct, "gsd_m": alignment.gsd_m}))
+        else:
+            alignment = compute_alignment(cfg.images)
+
         # 4) EXECUTE ------------------------------------------------------
         yield start("execute", f"Running {spec.name} on your imagery")
         # The tool is the slow stage (model load + inference), so it runs on a
@@ -220,9 +232,8 @@ class Controller:
         answer = result.text
         confidence = round(float(result.confidence), 3)
 
-        # co-registration report for the input (CRS / GSD / overlap, or honest
-        # pixel-grid fallback when the inputs aren't georeferenced)
-        alignment = compute_alignment(cfg.images)
+        # `alignment` was computed at the co-register step (true reprojection for
+        # multi-image tasks, or a single-image / pixel-grid report otherwise).
 
         # explainable confidence: split the scalar into model / evidence / geo
         if result.confidence_breakdown is not None:

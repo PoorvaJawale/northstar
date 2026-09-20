@@ -32,6 +32,7 @@ class ImageMeta(BaseModel):
     bounds: Optional[list[float]] = None   # [minx, miny, maxx, maxy] if georeferenced
     crs: Optional[str] = None              # e.g. "EPSG:32643" if georeferenced
     gsd: Optional[float] = None            # ground sample distance, metres/pixel
+    transform: Optional[list[float]] = None  # 6 affine coeffs (a,b,c,d,e,f) for reprojection
     preview_png_b64: Optional[str] = None  # small display image
 
 

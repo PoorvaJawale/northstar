@@ -98,6 +98,54 @@ def compute_alignment(metas: list[ImageMeta]) -> Alignment:
               else f"common CRS {target_crs}"))
 
 
+def coregister(metas: list[ImageMeta], arrays: list) -> tuple[list, Alignment]:
+    """TRUE pixel co-registration: resample image 2 onto image 1's CRS + grid with
+    rasterio.warp so the two rasters are pixel-for-pixel comparable. Returns
+    (aligned_arrays, Alignment). Falls back to the inputs unchanged (with a
+    pixel-grid Alignment) when the inputs aren't georeferenced or rasterio/warp
+    isn't available — so change/fusion still runs, honestly labelled."""
+    import numpy as np
+    if len(metas) < 2 or len(arrays) < 2:
+        return arrays, compute_alignment(metas)
+    a, b = metas[0], metas[1]
+    if not (a.georeferenced and b.georeferenced and a.transform and b.transform
+            and a.crs and b.crs):
+        return arrays, compute_alignment(metas)
+    try:
+        from rasterio.warp import reproject, Resampling
+        from rasterio.transform import Affine
+        from rasterio.crs import CRS
+        A = arrays[0].astype("float32")
+        B = arrays[1].astype("float32")
+        if A.ndim == 2:
+            A = A[..., None]
+        if B.ndim == 2:
+            B = B[..., None]
+        H, W = A.shape[0], A.shape[1]
+        C = B.shape[2]
+        dst = np.zeros((H, W, C), dtype="float32")
+        for c in range(C):
+            reproject(
+                source=B[..., c], destination=dst[..., c],
+                src_transform=Affine(*b.transform[:6]), src_crs=CRS.from_string(b.crs),
+                dst_transform=Affine(*a.transform[:6]), dst_crs=CRS.from_string(a.crs),
+                resampling=Resampling.bilinear)
+        overlap = _overlap_pct(a, b)
+        align = Alignment(
+            aligned=True, method="crs-reproject",
+            source_crs=[a.crs, b.crs], target_crs=a.crs,
+            gsd_m=round(a.gsd, 3) if a.gsd else None, overlap_pct=overlap,
+            resampling="bilinear",
+            note=(f"image 2 reprojected from {b.crs} onto image 1's grid ({a.crs})"
+                  if a.crs != b.crs else
+                  f"image 2 resampled onto image 1's grid ({a.crs})"))
+        return [A, dst], align
+    except Exception:
+        import traceback
+        traceback.print_exc()
+        return arrays, compute_alignment(metas)
+
+
 def alignment_gsd(align: Alignment, metas: list[ImageMeta]) -> Optional[float]:
     """The ground-sample-distance to use for area measurement, if known."""
     if align and align.gsd_m:
