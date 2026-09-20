@@ -30,7 +30,8 @@ from ..schemas import (QueryResponse, TraceStep, InputConfig, ImageMeta,
 
 # Tasks whose primary output is a spatial mask (so the tool's confidence reads as
 # evidence quality); everything else reads as model/answer certainty.
-_MASK_TASKS = ("change_vqa", "change_map", "cross_modal", "disaster_risk", "flood_map")
+_MASK_TASKS = ("change_vqa", "change_map", "cross_modal", "disaster_risk", "flood_map",
+               "landcover_area")
 
 # Human-readable label shown live in the UI while a stage is running.
 STAGE_LABELS: dict[str, str] = {
@@ -61,10 +62,12 @@ _PIPELINE_STEPS = {
     "single_vqa": ["Validate input", "GeoChat inference", "Score confidence", "Explain"],
     "single_caption": ["Validate input", "GeoChat captioning", "Explain"],
     "single_grounding": ["Validate input", "GeoChat grounding", "Draw region", "Explain"],
+    "landcover_area": ["Validate input", "Segment land-cover class",
+                       "Measure area (GSD)", "Render overlay", "Explain"],
 }
 _EST_SECONDS = {"single_vqa": 6, "single_caption": 6, "single_grounding": 7,
                 "change_vqa": 1, "change_map": 1, "cross_modal": 1,
-                "disaster_risk": 1, "flood_map": 1}
+                "disaster_risk": 1, "flood_map": 1, "landcover_area": 1}
 
 
 class Controller:
@@ -166,7 +169,7 @@ class Controller:
         # A single-image question asked on a 2-image scene is answered on ONE
         # image, instead of being forced into change/fusion just because two
         # images were uploaded. Only genuine change/fusion questions use both.
-        SINGLE_TASKS = ("single_vqa", "single_caption", "single_grounding")
+        SINGLE_TASKS = ("single_vqa", "single_caption", "single_grounding", "landcover_area")
         if task == "disaster_risk":
             eff_input, exec_arrays = "single_image", arrays
             route_note = "disaster risk accepts one scene and can use a second scene as supporting evidence"

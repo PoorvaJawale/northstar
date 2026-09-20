@@ -20,7 +20,7 @@ from ..schemas import Task, InputType
 
 VALID_TASKS: list[Task] = [
     "single_vqa", "single_caption", "single_grounding",
-    "change_vqa", "change_map", "cross_modal", "disaster_risk",
+    "change_vqa", "change_map", "cross_modal", "disaster_risk", "landcover_area",
 ]
 
 # Which tasks are even possible for a given input type (constrains the LLM).
@@ -30,11 +30,11 @@ VALID_TASKS: list[Task] = [
 # The change/fusion task is listed first so it stays the default when the query
 # is ambiguous, but any single-image intent in the query routes correctly.
 TASKS_BY_INPUT: dict[InputType, list[Task]] = {
-    "single_image": ["disaster_risk", "single_vqa", "single_caption", "single_grounding"],
-    "bitemporal_pair": ["change_vqa", "change_map",
-                        "disaster_risk", "single_vqa", "single_caption", "single_grounding"],
-    "optical_sar_pair": ["cross_modal",
-                        "disaster_risk", "single_vqa", "single_caption", "single_grounding"],
+    "single_image": ["disaster_risk", "landcover_area", "single_vqa", "single_caption", "single_grounding"],
+    "bitemporal_pair": ["change_vqa", "change_map", "disaster_risk", "landcover_area",
+                        "single_vqa", "single_caption", "single_grounding"],
+    "optical_sar_pair": ["cross_modal", "disaster_risk", "landcover_area",
+                        "single_vqa", "single_caption", "single_grounding"],
     "unknown": [],
 }
 
@@ -53,6 +53,9 @@ _SYSTEM = (
     "- cross_modal: combine the optical and SAR images.\n"
     "- disaster_risk: disaster management, flood/cyclone/landslide/wildfire risk, "
     "prediction, weather impact, rescue or damage assessment.\n"
+    "- landcover_area: MEASURE how big / how much area / what extent a land-cover "
+    "class covers (how big is the cropland/water/vegetation/built-up, area of X, "
+    "how many hectares of X). Use this for size/extent questions, not single_vqa.\n"
     "If the query names an object to point out or mark, prefer single_grounding over "
     "single_caption. Reply with STRICT JSON only: "
     "{\"task\": \"<one of the allowed>\", \"reason\": \"...\"}. "
@@ -70,6 +73,19 @@ _GROUNDING_RE = re.compile(
 
 def _looks_like_grounding(query: str) -> bool:
     return bool(_GROUNDING_RE.search(query or ""))
+
+
+# Deterministic guardrail: a "how big / how much area / extent of" measurement
+# question is a land-cover AREA request — a text VQA model can't measure it, so
+# route it to the segmentation+area tool instead of single_vqa.
+_MEASURE_RE = re.compile(
+    r"(?i)\b(how\s+(big|large|much\s+area|many\s+hectares|many\s+acres)|"
+    r"(area|extent|size|coverage)\s+of|how\s+much\s+of|hectares\s+of|"
+    r"what\s+(area|fraction|percentage|proportion))\b")
+
+
+def _looks_like_measurement(query: str) -> bool:
+    return bool(_MEASURE_RE.search(query or ""))
 
 
 def classify(query: str, input_type: InputType) -> tuple[Task, str, str]:
@@ -92,6 +108,13 @@ def classify(query: str, input_type: InputType) -> tuple[Task, str, str]:
 
     if task is None:
         task = _fallback(query, allowed)
+
+    # guardrail: a measurement question ("how big is the cropland") must be answered
+    # by segmentation+area, not a text model — but never steal a genuine
+    # change/disaster/fusion measurement ("how much did built-up change").
+    if ("landcover_area" in allowed and _looks_like_measurement(query)
+            and task in ("single_vqa", "single_caption", "single_grounding")):
+        task, note = "landcover_area", f"{note}; measurement-question override"
 
     # guardrail: explicit locate/highlight verbs must ground (produces visual evidence)
     if "single_grounding" in allowed and task != "single_grounding" and _looks_like_grounding(query):
@@ -133,6 +156,9 @@ _HINTS: dict[Task, list[str]] = {
     "disaster_risk": ["disaster", "flood", "inundation", "weather", "prediction", "predict",
                       "cyclone", "storm", "landslide", "wildfire", "risk", "damage",
                       "rescue", "emergency", "affected"],
+    "landcover_area": ["how big", "how large", "how much area", "area of", "extent of",
+                       "size of", "coverage", "how much of", "hectares", "square km",
+                       "cropland", "vegetation cover", "built-up area", "water area"],
 }
 
 

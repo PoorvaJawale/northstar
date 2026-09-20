@@ -13,6 +13,7 @@ Task = Literal[
     "change_map",       # Spatial change mask on a bi-temporal pair
     "cross_modal",      # Joint optical + SAR fusion analysis
     "disaster_risk",    # Disaster risk / short-horizon prediction from SAR/optical cues
+    "landcover_area",   # Segment a land-cover class and measure its extent
 ]
 
 InputType = Literal["single_image", "optical_sar_pair", "bitemporal_pair", "unknown"]
