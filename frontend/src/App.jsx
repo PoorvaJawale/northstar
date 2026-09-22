@@ -1,6 +1,27 @@
 import { useEffect, useRef, useState } from 'react';
 import IndiaBackground from './IndiaBackground';
 
+/* ------------------------------------------------------------------
+ * SatQuery AI — revamped workspace
+ * Design read: mission-control AI workspace for technical analysts,
+ * calm-dark glass language, split-studio (scene left / chat right).
+ * Dials: VARIANCE 7 / MOTION 6 / DENSITY 5.
+ *
+ * Borrowed inspiration (honest labels, hand-built — not official pkgs):
+ * - "Thinking trace / Tool chips / Task rows / Prompt bar / Insight
+ *    confidence" patterns inspired by beautifului.dev AI primitives.
+ * - "Badge / Button variants / Meter / Layer card" language inspired
+ *    by kumo-ui.com (Cloudflare Kumo). No @cloudflare/kumo dep — the
+ *    classes below are a local approximation for offline use.
+ * - Duotone glyphs inspired by runeicons.com (one glyph, five moods;
+ *    we ship the duotone mood: soft fill + crisp stroke on a 24px grid).
+ * - Split-studio composition + grotesk-sans evidence from Inspo study.
+ *
+ * Preserved: IndiaBackground earth + IST dynamic phases + glass panes.
+ * Shape rule: cards 14px, inputs 10px, pills fully round. One accent:
+ * warm saffron #ffa02e locked across CTAs, dots, meters.
+ * ------------------------------------------------------------------ */
+
 const taskLabels = {
   single_vqa: 'Question answering',
   single_caption: 'Scene description',
@@ -25,6 +46,135 @@ function confidenceWord(pct) {
   return 'Limited confidence';
 }
 
+/* ---------- Rune-style duotone icon (inspired by runeicons.com) ----------
+ * Duotone mood = translucent fill layer + full-strength stroke layer.
+ * 24px grid, stroke 1.7, round caps. Inline — no icon package needed. */
+const ICON_PATHS = {
+  satellite: (
+    <>
+      <path className="ri-fill" d="M9.5 14.5 14.5 9.5l3 3-5 5-3-3Z" />
+      <path d="M9.5 14.5 14.5 9.5l3 3-5 5-3-3Z" />
+      <path d="M6.5 17.5 4 20M17.5 6.5 20 4M7 11l2 2M13 17l2 2M11 7l2 2M17 11l-2 2" />
+      <path className="ri-fill" d="M12.6 7.6 16.4 3.8l3.8 3.8-3.8 3.8-3.8-3.8Z" />
+      <path d="M12.6 7.6 16.4 3.8l3.8 3.8-3.8 3.8-3.8-3.8ZM4 13.5l3.5-3.5 3 3L7 16.5 4 13.5Z" />
+    </>
+  ),
+  image: (
+    <>
+      <rect className="ri-fill" x="3.5" y="5" width="17" height="14" rx="2.5" />
+      <rect x="3.5" y="5" width="17" height="14" rx="2.5" />
+      <circle className="ri-fill" cx="9" cy="10" r="1.8" />
+      <path d="M4.5 17.5 10 12l3.5 3.5 3-3 3 3.5" />
+    </>
+  ),
+  upload: (
+    <>
+      <path className="ri-fill" d="M12 15.5v-11M7.5 8 12 3.5 16.5 8" opacity="0" />
+      <path d="M12 15.5v-11M7.5 8 12 3.5 16.5 8" />
+      <path className="ri-fill" d="M4.5 15v3.5h15V15" opacity="0" />
+      <path d="M4.5 15v2.5a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V15" />
+    </>
+  ),
+  chat: (
+    <>
+      <path className="ri-fill" d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v7a2.5 2.5 0 0 1-2.5 2.5H9l-5 4V6.5Z" />
+      <path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v7a2.5 2.5 0 0 1-2.5 2.5H9l-5 4V6.5Z" />
+      <path d="M8 9.5h8M8 12.5h5" />
+    </>
+  ),
+  spark: (
+    <>
+      <path className="ri-fill" d="M12 3.5 13.8 10l6.7 2-6.7 2L12 20.5 10.2 14l-6.7-2 6.7-2L12 3.5Z" />
+      <path d="M12 3.5 13.8 10l6.7 2-6.7 2L12 20.5 10.2 14l-6.7-2 6.7-2L12 3.5Z" />
+      <path d="M18.5 3.5v4M16.5 5.5h4" />
+    </>
+  ),
+  check: (
+    <>
+      <circle className="ri-fill" cx="12" cy="12" r="8.5" />
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="m8.2 12.4 2.7 2.7 5-5.6" />
+    </>
+  ),
+  alert: (
+    <>
+      <path className="ri-fill" d="M12 3.8 21 19.5H3L12 3.8Z" />
+      <path d="M12 3.8 21 19.5H3L12 3.8Z" />
+      <path d="M12 9.5v4.5" />
+      <circle cx="12" cy="16.6" r="0.4" />
+    </>
+  ),
+  file: (
+    <>
+      <path className="ri-fill" d="M6.5 3.5h7l4 4v13h-11v-17Z" />
+      <path d="M6.5 3.5h7l4 4v13h-11v-17ZM13.5 3.5v4h4" />
+      <path d="M9.5 12.5h5M9.5 15.5h5" />
+    </>
+  ),
+  clock: (
+    <>
+      <circle className="ri-fill" cx="12" cy="12" r="8.5" />
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M12 7.5V12l3 2" />
+    </>
+  ),
+  globe: (
+    <>
+      <circle className="ri-fill" cx="12" cy="12" r="8.5" />
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M3.5 12h17M12 3.5c2.6 2.3 3.9 5.2 3.9 8.5s-1.3 6.2-3.9 8.5c-2.6-2.3-3.9-5.2-3.9-8.5s1.3-6.2 3.9-8.5Z" />
+    </>
+  ),
+  send: (
+    <>
+      <path className="ri-fill" d="M20.5 3.5 10.8 13.2M20.5 3.5 14 20.5l-3.2-7.3-7.3-3.2 17-6.5Z" />
+      <path d="M20.5 3.5 10.8 13.2M20.5 3.5 14 20.5l-3.2-7.3-7.3-3.2 17-6.5Z" />
+    </>
+  ),
+  expand: (
+    <>
+      <path d="M15 3.5h5.5V9M9 20.5H3.5V15M20.5 3.5 14 10M3.5 20.5 10 14" />
+    </>
+  ),
+  x: (
+    <>
+      <path d="M6 6l12 12M18 6 6 18" />
+    </>
+  ),
+  layers: (
+    <>
+      <path className="ri-fill" d="m12 3.5 8.5 4.5L12 12.5 3.5 8 12 3.5Z" />
+      <path d="m12 3.5 8.5 4.5L12 12.5 3.5 8 12 3.5ZM4.5 12 12 16l7.5-4M4.5 16 12 20l7.5-4" />
+    </>
+  ),
+  cpu: (
+    <>
+      <rect className="ri-fill" x="7" y="7" width="10" height="10" rx="2" />
+      <rect x="7" y="7" width="10" height="10" rx="2" />
+      <path d="M10 3.5V6M14 3.5V6M10 18v2.5M14 18v2.5M3.5 10H6M3.5 14H6M18 10h2.5M18 14h2.5" />
+    </>
+  ),
+};
+
+function RuneIcon({ name, size = 16 }) {
+  return (
+    <svg
+      className="ri"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      {ICON_PATHS[name] || ICON_PATHS.spark}
+    </svg>
+  );
+}
+
 // Full-screen zoom viewer: scroll to zoom, drag to pan, Esc / backdrop to close.
 function ImageViewer({ src, label, onClose }) {
   const [scale, setScale] = useState(1);
@@ -43,13 +193,14 @@ function ImageViewer({ src, label, onClose }) {
   return (
     <div className="viewer-overlay" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="viewer-toolbar" onMouseDown={(e) => e.stopPropagation()}>
+        <RuneIcon name="expand" size={15} />
         <span className="viewer-name">{label}</span>
         <span className="viewer-spacer" />
-        <button type="button" onClick={() => zoomBy(1.25)} aria-label="Zoom in">+</button>
+        <button type="button" className="k-btn k-btn-ghost k-btn-xs" onClick={() => zoomBy(1.25)} aria-label="Zoom in">+</button>
         <span className="viewer-pct">{Math.round(scale * 100)}%</span>
-        <button type="button" onClick={() => zoomBy(0.8)} aria-label="Zoom out">−</button>
-        <button type="button" onClick={reset}>Reset</button>
-        <button type="button" className="viewer-close" onClick={onClose}>✕ Close</button>
+        <button type="button" className="k-btn k-btn-ghost k-btn-xs" onClick={() => zoomBy(0.8)} aria-label="Zoom out">−</button>
+        <button type="button" className="k-btn k-btn-ghost k-btn-xs" onClick={reset}>Reset</button>
+        <button type="button" className="k-btn k-btn-ghost k-btn-xs viewer-close" onClick={onClose}><RuneIcon name="x" size={13} /> Close</button>
       </div>
       <div className="viewer-stage" onWheel={(e) => zoomBy(e.deltaY > 0 ? 0.9 : 1.1)}
         onMouseDown={onDown} onMouseMove={onMove} onMouseUp={onUp} onMouseLeave={onUp}>
@@ -66,8 +217,157 @@ function ZoomImage({ src, caption, evidence, onExpand }) {
     <div className={`img-wrap${evidence ? ' evidence' : ''}`}>
       <img src={src} alt={caption} />
       <button type="button" className="expand-btn" aria-label="Expand image" onClick={() => onExpand({ src, label: caption })}>
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" /></svg>
+        <RuneIcon name="expand" size={14} />
       </button>
+    </div>
+  );
+}
+
+/* Kumo-inspired badge (local approximation, not the official package). */
+function KBadge({ tone = 'neutral', dot = false, icon, children }) {
+  return (
+    <span className={`k-badge k-badge-${tone}${dot ? ' is-dot' : ''}`}>
+      {dot ? <i className="k-dot" /> : icon ? <RuneIcon name={icon} size={12} /> : null}
+      {children}
+    </span>
+  );
+}
+
+/* BeautifulUI-inspired thinking trace: expandable steps + tool chips.
+ * Collapsed to a single line by default; expanding reveals the full trace.
+ * Header mirrors the live thinking single-line language so the streaming
+ * card and the committed card read as the same component. */
+function ThinkingTrace({ trace, tools, task, elapsed }) {
+  if (!trace?.length && !tools?.length) return null;
+  return (
+    <details className="think" open={false}>
+      <summary className="think-summary">
+        <span className="think-done-ic"><RuneIcon name="check" size={12} /></span>
+        <span className="think-label">Thought · {taskLabels[task] || task || 'analysis'}</span>
+        <span className="think-count">{trace?.length || 0} steps{elapsed != null && ` · ${elapsed.toFixed(1)}s`}</span>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="chev" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+      </summary>
+      <ol className="task-rows">
+        {(trace || []).map((s, k) => (
+          <li key={k} className="task-row">
+            <span className="task-ic"><RuneIcon name="check" size={13} /></span>
+            <div><strong>{stageLabel(s.stage)}</strong><span>{s.detail}</span></div>
+          </li>
+        ))}
+      </ol>
+      {tools?.length > 0 && (
+        <div className="tool-chips" aria-label="Models used">
+          {tools.map((t) => (
+            <span key={t} className="tool-chip"><RuneIcon name="cpu" size={12} />{t}</span>
+          ))}
+        </div>
+      )}
+    </details>
+  );
+}
+
+/* 3×3 pixel-grid loader — beautifului "loading state" language.
+ * Nine 4px cells flashing in sequence (staggered pixel-on), next to
+ * shimmer text. Pure CSS, transform/opacity only. */
+function PixelGrid() {
+  return (
+    <span className="pixel-grid" aria-hidden="true">
+      {[90, 180, 270, 0, 90, 180, 90, 180, 270].map((d, i) => (
+        <i key={i} style={{ animationDelay: `${d}ms` }} />
+      ))}
+    </span>
+  );
+}
+
+/* Live thought-processing — beautifului "thinking" language, fed by SSE.
+ * Single line by default (shimmer of the running stage + step count +
+ * elapsed timer); expanding reveals the rail of steps. Running steps carry
+ * a spinner ring; finished steps pop in a check. Elapsed ticks locally so
+ * the parent never re-renders on a timer. */
+function LiveThinking({ pending, defaultOpen = false }) {
+  const [open, setOpen] = useState(defaultOpen);
+  const [now, setNow] = useState(() => performance.now());
+  useEffect(() => {
+    const t = window.setInterval(() => setNow(performance.now()), 100);
+    return () => window.clearInterval(t);
+  }, []);
+  const secs = ((now - pending.t0) / 1000).toFixed(1);
+  const running = [...pending.steps].reverse().find((s) => s.status === 'running');
+  const doneCount = pending.steps.filter((s) => s.status === 'done').length;
+  return (
+    <div className="live-think">
+      <button type="button" className="live-head" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+        <PixelGrid />
+        <span className="shimmer" role="status">{running ? running.label : pending.answer != null ? 'Answering' : 'Thinking'}</span>
+        {pending.steps.length > 0 && <span className="live-count">{doneCount}/{pending.steps.length}</span>}
+        <span className="elapsed">{secs}s</span>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className={open ? 'chev open' : 'chev'} aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+      </button>
+      <div className={`live-grid${open ? ' is-open' : ''}`}>
+        <div className="live-overflow">
+          {pending.steps.length === 0 ? (
+            <p className="live-wait">Contacting the agent…</p>
+          ) : (
+            <ol className="live-steps">
+              {pending.steps.map((s, k) => (
+                <li key={`${s.stage}-${k}`} className={`live-step is-${s.status}`} style={{ '--d': `${Math.min(k, 6) * 60}ms` }}>
+                  <span className="live-rail" aria-hidden="true" />
+                  <span className="live-ic">
+                    {s.status === 'done'
+                      ? <RuneIcon name="check" size={12} />
+                      : <span className="ring" aria-hidden="true" />}
+                  </span>
+                  <div className="live-body">
+                    <strong>{s.label || stageLabel(s.stage)}</strong>
+                    {s.detail && <span className="live-detail">{s.detail}</span>}
+                    {(s.logs || []).map((lg, j) => (
+                      <span key={j} className="live-log">{lg}</span>
+                    ))}
+                  </div>
+                  {s.status === 'done' && s.ms != null && <span className="live-ms">{(s.ms / 1000).toFixed(1)}s</span>}
+                </li>
+              ))}
+            </ol>
+          )}
+          <p className="live-meta">{doneCount} of {pending.steps.length || '…'} stages complete</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* One bot card shared by the streaming bubble and the committed message —
+ * same order (thinking → answer → evidence → confidence → report) so the
+ * stream visibly settles into the final card instead of swapping layouts. */
+function BotBubble({ thinking, text, streaming, streamDone, evidence, confidence, task, reportId, onReport, onExpand, error, live }) {
+  return (
+    <div className={`bubble${error ? ' error' : ''}${live ? ' live' : ''}`}>
+      {thinking}
+      {text != null && (
+        <p className="bot-answer">
+          {text}
+          {streaming && <span className={`stream-caret${streamDone ? ' is-done' : ''}`} aria-hidden="true" />}
+        </p>
+      )}
+      {evidence && evidence.length > 0 && (
+        <div className="bot-evidence">
+          {evidence.map((e, k) => <ZoomImage key={k} evidence src={`data:image/png;base64,${e.image_b64}`} caption={e.label || 'Evidence overlay'} onExpand={onExpand} />)}
+        </div>
+      )}
+      {confidence != null && (() => { const pct = Math.round(Number(confidence) * 100); return (
+        <div className="bot-conf">
+          <div className="conf-top">
+            <span className="conf-word"><RuneIcon name={pct >= 60 ? 'check' : 'alert'} size={12} />{confidenceWord(pct)} · {pct}%</span>
+            {task && <KBadge tone="info">{taskLabels[task] || task}</KBadge>}
+          </div>
+          <div className="k-meter sm"><span className={pct >= 80 ? 'hi' : pct >= 60 ? 'mid' : 'lo'} style={{ width: `${pct}%` }} /></div>
+        </div>
+      ); })()}
+      {reportId && (
+        <button type="button" className="k-btn k-btn-outline k-btn-sm report-btn" onClick={() => onReport(reportId)}>
+          <RuneIcon name="file" size={13} /> Full report · PDF / HTML
+        </button>
+      )}
     </div>
   );
 }
@@ -83,6 +383,7 @@ function App() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [pending, setPending] = useState(null); // live SSE run: { steps, t0, answer, answerDone }
   const [status, setStatus] = useState('checking');
   const [live, setLive] = useState(false);
   const [registry, setRegistry] = useState([]);
@@ -90,6 +391,7 @@ function App() {
 
   useEffect(() => { loadHealth(); loadRegistry(); }, []);
   useEffect(() => { threadRef.current?.scrollTo({ top: threadRef.current.scrollHeight, behavior: 'smooth' }); }, [messages, loading]);
+  const pinBottom = () => { const el = threadRef.current; if (el) el.scrollTop = el.scrollHeight; };
 
   async function loadHealth() {
     try {
@@ -127,34 +429,204 @@ function App() {
     finally { setSuggestLoading(false); }
   }
 
+  /* Drain POST /api/chat/stream (SSE) into the pending run. Stage start/done
+   * frames grow the live thinking rail; log frames append tool progress;
+   * the result frame resolves with the final payload. Throws when the
+   * stream breaks before a result so the caller can fall back.
+   *
+   * Presentation pacing: mock (and fast) runs emit every frame in one
+   * burst, which would flash the whole rail at once. Applications are
+   * spaced ≥ STEP_PACE apart so stages appear one by one; slow live runs
+   * are unaffected (the pump only waits when it is behind). */
+  const STEP_PACE = 500;
+  async function streamChat(sid, text, patch, t0) {
+    const r = await fetch('/api/chat/stream', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ session_id: sid, message: text }),
+    });
+    if (!r.ok) throw new Error(`Stream failed (${r.status})`);
+    if (!r.body || typeof r.body.getReader !== 'function') throw new Error('Streaming unsupported');
+    const reader = r.body.getReader();
+    const dec = new TextDecoder();
+    let buf = '';
+    let final = null;
+    let chain = Promise.resolve();
+    let lastApply = 0;
+    const schedule = (fn) => {
+      chain = chain.then(async () => {
+        const wait = Math.max(0, lastApply + STEP_PACE - performance.now());
+        if (wait) await new Promise((res) => window.setTimeout(res, wait));
+        fn();
+        lastApply = performance.now();
+        pinBottom();
+      });
+      return chain;
+    };
+    const onEvent = (ev) => {
+      if (!ev || ev.type === 'open' || ev.type === 'done') return;
+      if (ev.type === 'error') throw new Error(ev.message || 'Agent error');
+      if (ev.type === 'stage') {
+        schedule(() => patch((p) => {
+          if (!p) return p;
+          const steps = [...p.steps];
+          if (ev.status === 'start') {
+            if (!steps.some((s) => s.stage === ev.stage && s.status === 'running')) {
+              steps.push({ stage: ev.stage, label: ev.label || stageLabel(ev.stage), detail: null, status: 'running', logs: [] });
+            }
+          } else {
+            const i = [...steps].reverse().findIndex((s) => s.stage === ev.stage && s.status === 'running');
+            if (i >= 0) {
+              const at = steps.length - 1 - i;
+              steps[at] = { ...steps[at], status: 'done', detail: ev.step?.detail || steps[at].detail, ms: ev.step?.ms };
+            } else {
+              steps.push({ stage: ev.stage, label: stageLabel(ev.stage), detail: ev.step?.detail, status: 'done', ms: ev.step?.ms, logs: [] });
+            }
+          }
+          return { ...p, steps };
+        }));
+      } else if (ev.type === 'log') {
+        schedule(() => patch((p) => {
+          if (!p) return p;
+          const steps = [...p.steps];
+          let at = [...steps].reverse().findIndex((s) => s.stage === ev.stage && s.status === 'running');
+          at = at >= 0 ? steps.length - 1 - at : steps.length - 1;
+          if (at < 0) return p;
+          const cur = steps[at];
+          steps[at] = { ...cur, logs: [...(cur.logs || []), ev.message].slice(-4) };
+          return { ...p, steps };
+        }));
+      } else if (ev.type === 'result') {
+        schedule(() => {
+          const d = ev.response || {};
+          final = {
+            text: d.answer || 'No answer returned.',
+            evidence: (d.evidence || []).filter((e) => e.image_b64),
+            task: d.task, tools: d.tools_used, confidence: d.confidence,
+            trace: d.trace || [], report_id: d.report_id,
+            elapsed: (performance.now() - t0) / 1000,
+          };
+        });
+      }
+    };
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      let idx;
+      while ((idx = buf.indexOf('\n\n')) >= 0) {
+        const frame = buf.slice(0, idx);
+        buf = buf.slice(idx + 2);
+        for (const line of frame.split('\n')) {
+          if (!line.startsWith('data:')) continue;
+          let ev = null;
+          try { ev = JSON.parse(line.slice(5)); } catch { continue; }
+          onEvent(ev); // throws on error frames — propagates out of the loop
+        }
+      }
+      pinBottom();
+    }
+    await chain;
+    if (!final) throw new Error('Stream ended without a result');
+    return final;
+  }
+
+  /* Reveal the answer word-by-word behind a caret (beautifului streaming
+   * text). The backend returns the whole answer, so this is a paced reveal,
+   * not token streaming — instant when reduced motion is preferred. */
+  function revealAnswer(final, patch) {
+    const full = final.text || '';
+    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    if (reduce || full.length < 24) {
+      patch((p) => (p ? { ...p, answer: full, answerDone: true } : p));
+      pinBottom();
+      return Promise.resolve();
+    }
+    const words = full.split(/(\s+)/);
+    return new Promise((res) => {
+      let i = 0;
+      const tick = () => {
+        i += 2;
+        const done = i >= words.length;
+        const slice = words.slice(0, done ? words.length : i).join('');
+        patch((p) => (p ? { ...p, answer: slice, answerDone: done } : p));
+        pinBottom();
+        if (done) window.setTimeout(res, 350);
+        else window.setTimeout(tick, 36);
+      };
+      tick();
+    });
+  }
+
   async function ask(q) {
     const text = (q ?? input).trim();
     if (!sessionId) { alert('Please add an image first.'); return; }
     if (!text || loading) return;
+    const sid = sessionId;
     setInput('');
     setMessages((m) => [...m, { role: 'user', text }]);
     setLoading(true);
+    const t0 = performance.now();
+    setPending({ steps: [], t0, answer: null, answerDone: false });
+    const patch = (fn) => setPending((p) => (p ? fn(p) : p));
+    let streamed = false;
     try {
-      const r = await fetch('/api/chat', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ session_id: sessionId, message: text }),
-      });
-      const d = await r.json();
-      setMessages((m) => [...m, {
-        role: 'bot', text: d.answer || 'No answer returned.',
-        evidence: (d.evidence || []).filter((e) => e.image_b64),
-        task: d.task, tools: d.tools_used, confidence: d.confidence,
-        trace: d.trace || [], report_id: d.report_id,
-      }]);
+      const final = await streamChat(sid, text, patch, t0);
+      streamed = true;
+      await revealAnswer(final, patch);
+      // Settle evidence + confidence + report into the streaming card first
+      // so it morphs into the final layout — then commit the identical card.
+      patch((p) => (p ? {
+        ...p,
+        evidence: final.evidence, confidence: final.confidence,
+        task: final.task, reportId: final.report_id,
+      } : p));
+      pinBottom();
+      await new Promise((res) => window.setTimeout(res, 650));
+      setMessages((m) => [...m, { role: 'bot', ...final }]);
     } catch (err) {
-      setMessages((m) => [...m, { role: 'bot', text: `Request failed: ${err}`, error: true }]);
-    } finally { setLoading(false); }
+      if (!streamed) {
+        // SSE unavailable (e.g. backend predates /api/chat/stream — restart
+        // it to get live staging): single blocking fetch, then play the
+        // same choreography — populate the rail from the real trace, then
+        // stream the answer text.
+        try {
+          const r = await fetch('/api/chat', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ session_id: sid, message: text }),
+          });
+          const d = await r.json();
+          const fb = {
+            role: 'bot', text: d.answer || 'No answer returned.',
+            evidence: (d.evidence || []).filter((e) => e.image_b64),
+            task: d.task, tools: d.tools_used, confidence: d.confidence,
+            trace: d.trace || [], report_id: d.report_id,
+            elapsed: (performance.now() - t0) / 1000,
+          };
+          patch((p) => (p ? {
+            ...p,
+            steps: (d.trace || []).map((s) => ({
+              stage: s.stage, label: stageLabel(s.stage), detail: s.detail,
+              status: 'done', ms: s.ms, logs: [],
+            })),
+          } : p));
+          await revealAnswer(fb, patch);
+          patch((p) => (p ? {
+            ...p,
+            evidence: fb.evidence, confidence: fb.confidence,
+            task: fb.task, reportId: fb.report_id,
+          } : p));
+          pinBottom();
+          await new Promise((res) => window.setTimeout(res, 650));
+          setMessages((m) => [...m, fb]);
+        } catch (err2) {
+          setMessages((m) => [...m, { role: 'bot', text: `Request failed: ${err2}`, error: true }]);
+        }
+      } else {
+        setMessages((m) => [...m, { role: 'bot', text: `Request failed: ${err}`, error: true }]);
+      }
+    } finally { setPending(null); setLoading(false); }
   }
 
-  function removeScene(i) {
-    // removing a scene invalidates the session; simplest is to reset
-    uploadNew();
-  }
   function uploadNew() {
     setFiles([]); setPreviews([]); setSessionId(null); setMessages([]); setSuggestions([]); setInput('');
     if (fileInputRef.current) fileInputRef.current.value = '';
@@ -163,131 +635,194 @@ function App() {
   const openReport = (id) => window.open(`/api/report/${id}`, '_blank', 'noopener,noreferrer');
 
   const hasScene = files.length > 0;
+  const lastConf = [...messages].reverse().find((m) => m.role === 'bot' && m.confidence != null);
 
   return (
     <div className="page">
       <IndiaBackground />
       <div className="tricolor" />
-      <header className="gov-header">
-        <div className="gov-emblem" aria-hidden="true">🛰️</div>
-        <div className="gov-title">
-          <h1>SatQuery AI</h1>
-          <p>Satellite Image Analysis Assistant · ISRO Problem Statement 26167</p>
+
+      {/* Mission bar — Kumo page-header block language, floating over earth */}
+      <header className="mission-bar">
+        <div className="mission-brand">
+          <span className="brand-tile"><RuneIcon name="satellite" size={20} /></span>
+          <div className="brand-copy">
+            <h1>SatQuery AI</h1>
+            <p>Vision–language assistant for remote sensing · ISRO PS-26167</p>
+          </div>
         </div>
-        <div className={`gov-status ${live ? 'ok' : 'off'}`}><span className="dot" /> {status}</div>
+        <nav className="mission-nav" aria-label="Workspace">
+          <span className="nav-item is-active"><RuneIcon name="layers" size={13} />Scene</span>
+          <span className="nav-item"><RuneIcon name="chat" size={13} />Conversation</span>
+          <span className="nav-item nav-hide"><RuneIcon name="file" size={13} />Reports</span>
+        </nav>
       </header>
 
       <input id="scene-upload" ref={fileInputRef} className="file-input" type="file"
         accept=".tif,.tiff,.png,.jpg,.jpeg" multiple onChange={(e) => startSession(e.target.files)} />
 
-      <main className="gov-main">
-        {/* LEFT: scene / data workspace */}
-        <section className="panel scene-panel" aria-label="Scene">
-          <div className="panel-heading">
-            <div><span className="eyebrow">DATA</span><h2>Loaded scene</h2></div>
-            {hasScene && <span className="count-badge">{files.length}/2</span>}
+      <main className="workspace">
+        {/* LEFT: scene layer card */}
+        <section className="glass scene-card" aria-label="Scene" style={{ '--d': '0ms' }}>
+          <div className="card-head">
+            <div>
+              <p className="kicker"><RuneIcon name="globe" size={12} /> Earth observation data</p>
+              <h2>Loaded scene</h2>
+            </div>
+            {hasScene && <span className="count-pill">{files.length}/2</span>}
           </div>
 
           {!hasScene ? (
-            <label htmlFor="scene-upload" className="upload-card">
-              <span className="upload-icon" aria-hidden="true"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M12 16V4" /><path d="m7 9 5-5 5 5" /><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" /></svg></span>
+            <label htmlFor="scene-upload" className="drop-card">
+              <span className="drop-icon"><RuneIcon name="upload" size={22} /></span>
               <strong>Add a satellite image</strong>
-              <small>One image, or two for change / optical–SAR. GeoTIFF, TIFF, PNG, JPEG.</small>
+              <small>One image, or two for change / optical–SAR.<br />GeoTIFF · TIFF · PNG · JPEG</small>
+              <span className="drop-cta"><RuneIcon name="image" size={13} /> Browse files</span>
             </label>
           ) : (
             <>
               <div className="scene-list">
                 {previews.map((src, i) => (
-                  <div className="scene-item" key={i}>
+                  <div className="scene-item reveal" key={i} style={{ '--d': `${i * 70}ms` }}>
                     <ZoomImage src={src} caption={files[i]?.name || `Scene ${i + 1}`} onExpand={setViewer} />
-                    <div className="scene-meta"><span title={files[i]?.name}>{files[i]?.name}</span></div>
+                    <div className="scene-meta">
+                      <RuneIcon name="image" size={12} />
+                      <span title={files[i]?.name}>{files[i]?.name}</span>
+                      <KBadge tone="neutral">{i === 0 ? 'T1' : 'T2'}</KBadge>
+                    </div>
                   </div>
                 ))}
               </div>
-              <button type="button" className="upload-new" onClick={uploadNew}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 16V4" /><path d="m7 9 5-5 5 5" /><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" /></svg>
-                Upload new image
-              </button>
+              <div className="scene-actions">
+                <button type="button" className="k-btn k-btn-secondary k-btn-sm" onClick={uploadNew}>
+                  <RuneIcon name="upload" size={13} /> New image
+                </button>
+                <button type="button" className="k-btn k-btn-ghost k-btn-sm" onClick={() => fileInputRef.current?.click()}>
+                  <RuneIcon name="layers" size={13} /> Replace
+                </button>
+              </div>
             </>
           )}
 
-          <div className="section-title">SPECIALIST MODELS<span className="section-meta">{registry.length} online</span></div>
-          <div className="models-mini">
-            {(registry.length ? registry : [{ name: 'geochat' }, { name: 'change' }, { name: 'optical_sar' }]).map((t) => (
-              <span className="model-pill" key={t.name}><i className="online-dot" />{t.name}</span>
-            ))}
+          <div className="card-sec">
+            <div className="sec-title"><span>Specialist models</span><span className="sec-meta">{registry.length || 3} online</span></div>
+            <div className="model-badges">
+              {(registry.length ? registry : [{ name: 'geochat' }, { name: 'change' }, { name: 'optical_sar' }]).map((t) => (
+                <KBadge key={t.name} tone="success" dot>{t.name}</KBadge>
+              ))}
+            </div>
+          </div>
+
+          {lastConf?.confidence != null && (() => {
+            const pct = Math.round(Number(lastConf.confidence) * 100);
+            return (
+              <div className="card-sec insight">
+                <div className="sec-title"><span>Latest confidence</span><span className="sec-meta">{confidenceWord(pct)}</span></div>
+                <div className="k-meter" role="meter" aria-valuenow={pct} aria-valuemin="0" aria-valuemax="100">
+                  <span className={pct >= 80 ? 'hi' : pct >= 60 ? 'mid' : 'lo'} style={{ width: `${pct}%` }} />
+                </div>
+                <div className="insight-num">{pct}<small>%</small></div>
+              </div>
+            );
+          })()}
+
+          <div className="card-foot">
+            <RuneIcon name="clock" size={12} />
+            <span>Background follows IST · day / night imagery crossfades automatically</span>
           </div>
         </section>
 
         {/* RIGHT: conversational assistant */}
-        <section className="panel chat-panel" aria-label="Assistant">
-          <div className="panel-heading">
-            <div><span className="eyebrow">AI ASSISTANT</span><h2>Conversation</h2></div>
-            <span className={`status-chip ${loading ? 'status-running' : messages.length ? 'status-complete' : ''}`}>
-              {loading ? 'THINKING' : messages.length ? 'READY' : 'ASK ANYTHING'}
-            </span>
+        <section className="glass chat-card" aria-label="Assistant" style={{ '--d': '90ms' }}>
+          <div className="card-head">
+            <div>
+              <p className="kicker"><RuneIcon name="spark" size={12} /> AI assistant</p>
+              <h2>Conversation</h2>
+            </div>
           </div>
 
           <div className="chat-thread" ref={threadRef}>
-            {!hasScene && <div className="thread-hint">Add a scene on the left, then ask questions here. Follow-ups stay in the same conversation.</div>}
-            {hasScene && messages.length === 0 && !loading && (
-              <div className="thread-hint">Ask a question below, or tap a suggestion, to start analysing this scene.</div>
-            )}
-            {messages.map((m, i) => m.role === 'user' ? (
-              <div className="msg user" key={i}><div className="bubble">{m.text}</div></div>
-            ) : (
-              <div className="msg bot" key={i}>
-                <div className={`bubble${m.error ? ' error' : ''}`}>
-                  <p className="bot-answer">{m.text}</p>
-                  {m.evidence && m.evidence.length > 0 && (
-                    <div className="bot-evidence">
-                      {m.evidence.map((e, k) => <ZoomImage key={k} evidence src={`data:image/png;base64,${e.image_b64}`} caption={e.label || 'Evidence overlay'} onExpand={setViewer} />)}
-                    </div>
-                  )}
-                  {m.confidence != null && (() => { const pct = Math.round(Number(m.confidence) * 100); return (
-                    <div className="bot-conf">
-                      <span>{confidenceWord(pct)} · {pct}%</span>
-                      <div className="conf-bar"><span className={pct >= 80 ? 'hi' : pct >= 60 ? 'mid' : 'lo'} style={{ width: `${pct}%` }} /></div>
-                    </div>
-                  ); })()}
-                  {!m.error && (
-                    <details className="bot-details">
-                      <summary>Details · {taskLabels[m.task] || m.task || 'analysis'}</summary>
-                      <div className="bot-meta">Model: {(m.tools || []).join(', ') || '—'}</div>
-                      <ol className="trace">
-                        {(m.trace || []).map((s, k) => <li key={k}><strong>{stageLabel(s.stage)}</strong><span>{s.detail}</span></li>)}
-                      </ol>
-                      {m.report_id && <button type="button" className="report-mini" onClick={() => openReport(m.report_id)}>Download full report (PDF / HTML)</button>}
-                    </details>
-                  )}
+            {!hasScene && (
+              <div className="empty-state">
+                <span className="empty-icon"><RuneIcon name="satellite" size={26} /></span>
+                <strong>Start with a scene</strong>
+                <p>Add a satellite image on the left. Follow-ups stay in the same conversation, with evidence overlays attached to every answer.</p>
+                <div className="empty-steps">
+                  <span><i>1</i> Upload GeoTIFF / PNG</span>
+                  <span><i>2</i> Ask in plain language</span>
+                  <span><i>3</i> Export the PDF report</span>
                 </div>
               </div>
+            )}
+            {hasScene && messages.length === 0 && !loading && (
+              <div className="thread-hint">
+                <RuneIcon name="chat" size={14} />
+                Scene locked in. Ask below — or tap a suggestion to start.
+              </div>
+            )}
+            {messages.map((m, i) => m.role === 'user' ? (
+              <div className="msg user reveal" key={i}>
+                <div className="bubble">{m.text}</div>
+              </div>
+            ) : (
+              <div className="msg bot reveal" key={i}>
+                <BotBubble
+                  thinking={!m.error && (m.trace?.length || m.tools?.length)
+                    ? <ThinkingTrace trace={m.trace} tools={m.tools} task={m.task} elapsed={m.elapsed} />
+                    : null}
+                  text={m.text} error={m.error}
+                  evidence={m.evidence} confidence={m.confidence} task={m.task}
+                  reportId={m.report_id} onReport={openReport} onExpand={setViewer}
+                />
+              </div>
             ))}
-            {loading && <div className="msg bot"><div className="bubble typing"><i /><i /><i /></div></div>}
+            {pending && (
+              <div className="msg bot">
+                <BotBubble live
+                  thinking={<LiveThinking pending={pending} />}
+                  text={pending.answer} streaming={pending.answer != null} streamDone={pending.answerDone}
+                  evidence={pending.evidence} confidence={pending.confidence} task={pending.task}
+                  reportId={pending.reportId} onReport={openReport} onExpand={setViewer}
+                />
+              </div>
+            )}
           </div>
 
           {hasScene && (suggestions.length > 0 || suggestLoading) && (
-            <div className="suggest-row">
-              <span className="suggest-label">TRY ASKING</span>
-              {suggestLoading && !suggestions.length
-                ? <span className="suggest-loading">reading the scene…</span>
-                : suggestions.map((q) => <button key={q} type="button" className="suggest-chip" onClick={() => ask(q)} disabled={loading}>{q}</button>)}
+            <div className="suggest-zone">
+              <span className="suggest-label">Try asking</span>
+              <div className="suggest-row">
+                {suggestLoading && !suggestions.length
+                  ? <span className="suggest-loading">Reading the scene…</span>
+                  : suggestions.map((q) => <button key={q} type="button" className="suggest-chip" onClick={() => ask(q)} disabled={loading}><RuneIcon name="spark" size={12} />{q}</button>)}
+              </div>
             </div>
           )}
 
-          <div className="chat-inputbar">
-            <input type="text" value={input} placeholder={hasScene ? 'Tell me what you want to know…' : 'Add an image first…'}
-              disabled={!hasScene} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') ask(); }} />
-            <button type="button" className="ask" onClick={() => ask()} disabled={loading || !hasScene || !input.trim()}>
-              {loading ? '…' : 'Ask'}
+          {/* Prompt bar — beautifului prompt-bar language, kumo input shape */}
+          <div className="promptbar">
+            <span className="prompt-ctx" title="Scene attached">
+              <RuneIcon name="image" size={12} />{hasScene ? `${files.length} scene${files.length > 1 ? 's' : ''}` : 'no scene'}
+            </span>
+            <input
+              type="text" value={input}
+              placeholder={hasScene ? 'Ask about this scene…' : 'Add an image first…'}
+              disabled={!hasScene}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') ask(); }}
+              aria-label="Ask about the scene"
+            />
+            <span className="prompt-model" title="Active models"><RuneIcon name="cpu" size={12} />{registry.length || 3}</span>
+            <button type="button" className="k-btn k-btn-primary send" onClick={() => ask()} disabled={loading || !hasScene || !input.trim()} aria-label="Send">
+              {loading ? '…' : <><RuneIcon name="send" size={14} /><span>Ask</span></>}
             </button>
           </div>
         </section>
       </main>
 
-      <footer className="gov-footer">
-        <span>SatQuery AI · Agentic Vision–Language Assistant for Remote Sensing</span>
-        <span>ISRO / SAC · Problem Statement 26167 · Prototype</span>
+      <footer className="mission-foot">
+        <span><RuneIcon name="satellite" size={12} /> SatQuery AI · Agentic vision–language assistant</span>
+        <span>ISRO / SAC · PS-26167 · Prototype</span>
       </footer>
 
       {viewer && <ImageViewer src={viewer.src} label={viewer.label} onClose={() => setViewer(null)} />}
