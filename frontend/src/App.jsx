@@ -268,13 +268,56 @@ function getFileFormat(filename) {
   return ext.toUpperCase();
 }
 
+/* ---------- SatQuery AI Logo (Tricolor brackets, orbit & satellite dot) ---------- */
+function SatQueryLogo({ size = 26 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 36 36" fill="none" className="sq-logo" aria-hidden="true">
+      {/* Orbit ellipse */}
+      <ellipse cx="18" cy="18" rx="14.5" ry="6.2" transform="rotate(-28 18 18)" stroke="currentColor" strokeOpacity="0.28" strokeWidth="1.2" strokeDasharray="3 2" />
+      {/* Blue orbiting satellite dot */}
+      <circle cx="29.5" cy="12" r="2.2" fill="#2563EB" />
+      <circle cx="29.5" cy="12" r="3.8" stroke="#2563EB" strokeOpacity="0.45" strokeWidth="1" />
+      {/* Orange < */}
+      <path d="M12 13.5L8 18L12 22.5" stroke="#FF9933" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+      {/* Dynamic / */}
+      <path d="M16 23.5L20 12.5" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+      {/* Green > */}
+      <path d="M24 13.5L28 18L24 22.5" stroke="#138808" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 /* ---------- Scene Inspector Subcomponents ---------- */
+
+function ProductHeader({ theme, onToggleTheme }) {
+  return (
+    <div className="product-identity">
+      <div className="product-branding">
+        <div className="product-logo-tile">
+          <SatQueryLogo size={24} />
+        </div>
+        <div className="product-titles">
+          <h1 className="product-name">✦ SatQuery AI</h1>
+          <p className="product-tagline">Vision–language assistant for remote sensing</p>
+        </div>
+      </div>
+      <button
+        type="button"
+        className="theme-toggle-compact"
+        onClick={onToggleTheme}
+        title={`Switch to ${theme === 'light' ? 'Dark' : 'Light'} mode`}
+        aria-label={`Switch to ${theme === 'light' ? 'Dark' : 'Light'} mode`}
+      >
+        <RuneIcon name={theme === 'light' ? 'moon' : 'sun'} size={14} />
+      </button>
+    </div>
+  );
+}
 
 function SceneHeader({ count = 0, max = 2 }) {
   return (
     <div className="scene-header">
       <div className="scene-header-title">
-        <span className="kicker">✦ EARTH OBSERVATION DATA</span>
         <h2>Scene Inspector</h2>
       </div>
       <div className="scene-counter" title="Active scenes loaded">
@@ -915,40 +958,13 @@ function App() {
   const openReport = (id) => window.open(`/api/report/${id}`, '_blank', 'noopener,noreferrer');
 
   const hasScene = files.length > 0;
-  const lastConf = [...messages].reverse().find((m) => m.role === 'bot' && m.confidence != null);
+  const lastReport = [...messages].reverse().find((m) => m.role === 'bot' && m.report_id);
+  const lastReportId = lastReport?.report_id;
 
   return (
     <div className={`page theme-${theme}`} data-theme={theme}>
       <IndiaBackground theme={theme} />
       <div className="tricolor" />
-
-      {/* Mission bar — Kumo page-header block language, floating over earth */}
-      <header className="mission-bar">
-        <div className="mission-brand">
-          <span className="brand-tile"><RuneIcon name="satellite" size={20} /></span>
-          <div className="brand-copy">
-            <h1>SatQuery AI</h1>
-            <p>Vision–language assistant for remote sensing · ISRO PS-26167</p>
-          </div>
-        </div>
-        <nav className="mission-nav" aria-label="Workspace">
-          <span className="nav-item is-active"><RuneIcon name="layers" size={13} />Scene</span>
-          <span className="nav-item"><RuneIcon name="chat" size={13} />Conversation</span>
-          <span className="nav-item nav-hide"><RuneIcon name="file" size={13} />Reports</span>
-        </nav>
-        <div className="mission-actions">
-          <button
-            type="button"
-            className="theme-toggle-btn"
-            onClick={() => setTheme((t) => (t === 'light' ? 'dark' : 'light'))}
-            title={`Switch to ${theme === 'light' ? 'Dark' : 'Light'} mode`}
-            aria-label={`Switch to ${theme === 'light' ? 'Dark' : 'Light'} mode`}
-          >
-            <RuneIcon name={theme === 'light' ? 'moon' : 'sun'} size={14} />
-            <span className="theme-toggle-text">{theme === 'light' ? 'Dark mode' : 'Light mode'}</span>
-          </button>
-        </div>
-      </header>
 
       <input id="scene-upload" ref={fileInputRef} className="file-input" type="file"
         accept=".tif,.tiff,.png,.jpg,.jpeg" multiple onChange={(e) => startSession(e.target.files)} />
@@ -956,8 +972,13 @@ function App() {
         accept=".tif,.tiff,.png,.jpg,.jpeg" onChange={(e) => addScene(e.target.files)} />
 
       <main className="workspace">
-        {/* LEFT: Scene Inspector Panel */}
+        {/* LEFT: Product Identity & Scene Inspector Panel */}
         <section className="glass scene-card scene-inspector" aria-label="Earth Observation Scene Inspector" style={{ '--d': '0ms' }}>
+          <ProductHeader
+            theme={theme}
+            onToggleTheme={() => setTheme((t) => (t === 'light' ? 'dark' : 'light'))}
+          />
+
           <SceneHeader count={files.length} max={2} />
 
           {!hasScene ? (
@@ -989,13 +1010,24 @@ function App() {
           <SceneInspectorFooter />
         </section>
 
-        {/* RIGHT: conversational assistant */}
-        <section className="glass chat-card" aria-label="Assistant" style={{ '--d': '90ms' }}>
+        {/* RIGHT: AI Assistant / Conversational Workspace */}
+        <section className="glass chat-card" aria-label="AI Assistant" style={{ '--d': '90ms' }}>
           <div className="card-head">
-            <div>
+            <div className="ai-assistant-head">
               <p className="kicker">✦ AI ASSISTANT</p>
               <h2>Conversation</h2>
             </div>
+            {lastReportId && (
+              <button
+                type="button"
+                className="k-btn k-btn-ghost k-btn-xs report-head-btn"
+                onClick={() => openReport(lastReportId)}
+                title="Open full report in a new tab"
+              >
+                <RuneIcon name="file" size={13} />
+                <span>Export report</span>
+              </button>
+            )}
           </div>
 
           <div className="chat-thread" ref={threadRef}>
