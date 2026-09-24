@@ -52,6 +52,14 @@ OPTICAL_SAR_MODEL = os.getenv("OPTICAL_SAR_MODEL", "")           # local checkpo
 LORA_ADAPTER = os.getenv("LORA_ADAPTER", "")                     # path to your fine-tuned LoRA adapter
 DEVICE = os.getenv("SATQUERY_DEVICE", "cuda")
 
+# ---- Disaster-management models (optional, used by backend.tools.disaster_tool) ----
+# DISASTER_SAR_MODEL: local ONNX segmentation model trained for Sentinel-1 flood/water masks.
+# DISASTER_OPTICAL_MODEL: HuggingFace image-segmentation model id/path, e.g. SegFormer/Mask2Former.
+# WEATHER_API: currently supports "open-meteo" when lat/lon are supplied.
+DISASTER_SAR_MODEL = os.getenv("DISASTER_SAR_MODEL", "")
+DISASTER_OPTICAL_MODEL = os.getenv("DISASTER_OPTICAL_MODEL", "")
+WEATHER_API = os.getenv("WEATHER_API", "open-meteo")
+
 # ---- Registry ----
 REGISTRY_PATH = Path(os.getenv("SATQUERY_REGISTRY", ROOT / "backend" / "tools" / "registry.yaml"))
 

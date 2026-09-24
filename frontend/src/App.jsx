@@ -29,6 +29,8 @@ const taskLabels = {
   change_vqa: 'Change detection',
   change_map: 'Change map',
   cross_modal: 'Optical + SAR fusion',
+  disaster_risk: 'Disaster risk',
+  landcover_area: 'Land-cover area',
 };
 
 const stageLabel = (s) => ({
@@ -471,6 +473,8 @@ function ModelStatus({ registry = [] }) {
     if (name === 'geochat') return 'GeoChat';
     if (name === 'change') return 'Change';
     if (name === 'optical_sar') return 'Optical-SAR';
+    if (name === 'disaster') return 'Disaster';
+    if (name === 'landcover') return 'Land-cover';
     return name;
   };
 
@@ -491,6 +495,30 @@ function ModelStatus({ registry = [] }) {
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+function BenchmarkPanel({ data }) {
+  const [open, setOpen] = useState(false);
+  if (!data) return null;
+  const ft = data.fine_tune || {};
+  return (
+    <div className="scene-section bench-section">
+      <div className="sec-title bench-head" onClick={() => setOpen((o) => !o)}>
+        <span>✦ BENCHMARKS</span>
+        <span className="sec-meta">{open ? 'hide' : 'show'}</span>
+      </div>
+      {open && (
+        <div className="bench-body">
+          <div className="bench-ft">Fine-tune <b>{ft.train_samples_before}→{ft.train_samples_after}</b> samples · loss <b>{ft.loss_start}→{ft.loss_end}</b>
+            <div className="bench-acc">{ft.accuracy_after != null ? `accuracy ${ft.accuracy_before}→${ft.accuracy_after}` : 'accuracy: pending eval'}</div></div>
+          <table className="bench-table"><tbody>
+            {(data.models || []).map((r, i) => (
+              <tr key={i}><td>{r.task}</td><td className="bm">{r.model}</td><td className="bn">{r.value != null ? r.value : '—'}</td></tr>))}
+          </tbody></table>
+        </div>
+      )}
     </div>
   );
 }
@@ -617,10 +645,72 @@ function LiveThinking({ pending, defaultOpen = false }) {
   );
 }
 
+/* CRS / GSD / overlap / physical-area chips shown under an answer. */
+function MetaRibbon({ alignment, area }) {
+  const chips = [];
+  if (alignment) {
+    if (alignment.aligned) {
+      if (alignment.target_crs) chips.push(alignment.target_crs);
+      if (alignment.gsd_m) chips.push(`${alignment.gsd_m} m/px`);
+      if (alignment.overlap_pct != null) chips.push(`${alignment.overlap_pct}% overlap`);
+    } else chips.push('pixel-grid · no CRS');
+  }
+  if (area) chips.push(area.area_ha != null ? `${area.area_ha} ha` : `${area.pct}% of scene`);
+  if (!chips.length) return null;
+  return <div className="meta-ribbon">{chips.map((c, i) => <span className="meta-chip" key={i}>{c}</span>)}</div>;
+}
+
+/* Explainable confidence — named dimensions + plain-language reasons. */
+function ConfBreakdown({ breakdown }) {
+  const pct = (v) => Math.round(Number(v) * 100);
+  const dims = [['Model', breakdown.model], ['Evidence quality', breakdown.evidence_quality],
+    ['Geospatial validity', breakdown.geospatial_validity]].filter(([, v]) => v != null);
+  const o = pct(breakdown.overall);
+  const reasons = breakdown.reasons || [];
+  return (
+    <div className="bot-conf conf-breakdown">
+      <div className="conf-top">
+        <span className="conf-word"><RuneIcon name={o >= 60 ? 'check' : 'alert'} size={12} />{confidenceWord(o)} · {o}%</span>
+        <span className="conf-cal" title="Not yet calibrated against ground-truth correctness">{breakdown.calibration_state}</span>
+      </div>
+      {dims.map(([name, v]) => { const p = pct(v); return (
+        <div className="conf-dim" key={name}>
+          <span className="conf-dim-name">{name}</span>
+          <div className="k-meter sm"><span className={p >= 80 ? 'hi' : p >= 60 ? 'mid' : 'lo'} style={{ width: `${p}%` }} /></div>
+          <span className="conf-dim-val">{p}%</span>
+        </div>); })}
+      {reasons.length > 0 && <ul className="conf-reasons">{reasons.map((r, i) => <li key={i}>{r}</li>)}</ul>}
+    </div>
+  );
+}
+
+/* Evidence Explorer — the derivation chain behind an answer ("Show me why"). */
+function WhyPanel({ m }) {
+  const [open, setOpen] = useState(false);
+  const steps = [['Question', m.question || '—'],
+    ['Task · Model', `${taskLabels[m.task] || m.task || 'analysis'} · ${(m.tools || []).join(', ') || '—'}`]];
+  if (m.alignment) steps.push(['Alignment', m.alignment.aligned
+    ? `${m.alignment.method} → ${m.alignment.target_crs}${m.alignment.overlap_pct != null ? `, ${m.alignment.overlap_pct}% overlap` : ''}`
+    : 'pixel-grid (inputs not georeferenced)']);
+  if (m.evidence && m.evidence.length) steps.push(['Evidence', m.evidence.map((e) => e.label).filter(Boolean).join('; ')]);
+  if (m.area) steps.push(['Measurement', m.area.area_ha != null
+    ? `${m.area.pixels.toLocaleString()} px × (${m.area.gsd_m} m)² = ${m.area.area_ha} ha`
+    : `${m.area.pixels.toLocaleString()} px = ${m.area.pct}% of scene`]);
+  if (m.breakdown && m.breakdown.reasons && m.breakdown.reasons.length) steps.push(['Confidence', m.breakdown.reasons.join(' · ')]);
+  return (
+    <div className="why-panel">
+      <button type="button" className="why-toggle" onClick={() => setOpen((o) => !o)}>
+        {open ? '▾' : '▸'} Show me why</button>
+      {open && <ol className="why-chain">{steps.map(([k, v], i) => (
+        <li key={i}><span className="why-k">{k}</span><span className="why-v">{v}</span></li>))}</ol>}
+    </div>
+  );
+}
+
 /* One bot card shared by the streaming bubble and the committed message —
- * same order (thinking → answer → evidence → confidence → report) so the
- * stream visibly settles into the final card instead of swapping layouts. */
-function BotBubble({ thinking, text, streaming, streamDone, evidence, confidence, task, reportId, onReport, onExpand, error, live }) {
+ * same order (thinking → answer → meta → evidence → confidence → why → report). */
+function BotBubble({ thinking, text, streaming, streamDone, evidence, confidence, breakdown,
+                     alignment, area, question, tools, task, reportId, onReport, onExpand, error, live }) {
   return (
     <div className={`bubble${error ? ' error' : ''}${live ? ' live' : ''}`}>
       {thinking}
@@ -630,12 +720,13 @@ function BotBubble({ thinking, text, streaming, streamDone, evidence, confidence
           {streaming && <span className={`stream-caret${streamDone ? ' is-done' : ''}`} aria-hidden="true" />}
         </p>
       )}
+      {!error && <MetaRibbon alignment={alignment} area={area} />}
       {evidence && evidence.length > 0 && (
         <div className="bot-evidence">
           {evidence.map((e, k) => <ZoomImage key={k} evidence src={`data:image/png;base64,${e.image_b64}`} caption={e.label || 'Evidence overlay'} onExpand={onExpand} />)}
         </div>
       )}
-      {confidence != null && (() => { const pct = Math.round(Number(confidence) * 100); return (
+      {breakdown ? <ConfBreakdown breakdown={breakdown} /> : (confidence != null && (() => { const pct = Math.round(Number(confidence) * 100); return (
         <div className="bot-conf">
           <div className="conf-top">
             <span className="conf-word"><RuneIcon name={pct >= 60 ? 'check' : 'alert'} size={12} />{confidenceWord(pct)} · {pct}%</span>
@@ -643,7 +734,10 @@ function BotBubble({ thinking, text, streaming, streamDone, evidence, confidence
           </div>
           <div className="k-meter sm"><span className={pct >= 80 ? 'hi' : pct >= 60 ? 'mid' : 'lo'} style={{ width: `${pct}%` }} /></div>
         </div>
-      ); })()}
+      ); })())}
+      {!error && (breakdown || area || alignment) && (
+        <WhyPanel m={{ question, task, tools, alignment, area, breakdown, evidence }} />
+      )}
       {reportId && (
         <button type="button" className="k-btn k-btn-outline k-btn-sm report-btn" onClick={() => onReport(reportId)}>
           <RuneIcon name="file" size={13} /> Full report · PDF / HTML
@@ -673,13 +767,17 @@ function App() {
   const [live, setLive] = useState(false);
   const [registry, setRegistry] = useState([]);
   const [viewer, setViewer] = useState(null);
+  const [benchmark, setBenchmark] = useState(null);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
     localStorage.setItem('satquery-theme', theme);
   }, [theme]);
 
-  useEffect(() => { loadHealth(); loadRegistry(); }, []);
+  useEffect(() => { loadHealth(); loadRegistry(); loadBenchmark(); }, []);
+  async function loadBenchmark() {
+    try { setBenchmark(await (await fetch('/api/benchmark')).json()); } catch { /* ignore */ }
+  }
   useEffect(() => { threadRef.current?.scrollTo({ top: threadRef.current.scrollHeight, behavior: 'smooth' }); }, [messages, loading]);
   const pinBottom = () => { const el = threadRef.current; if (el) el.scrollTop = el.scrollHeight; };
 
@@ -820,6 +918,8 @@ function App() {
             text: d.answer || 'No answer returned.',
             evidence: (d.evidence || []).filter((e) => e.image_b64),
             task: d.task, tools: d.tools_used, confidence: d.confidence,
+            breakdown: d.confidence_breakdown, alignment: d.alignment, area: d.area,
+            question: text,
             trace: d.trace || [], report_id: d.report_id,
             elapsed: (performance.now() - t0) / 1000,
           };
@@ -897,6 +997,8 @@ function App() {
         ...p,
         evidence: final.evidence, confidence: final.confidence,
         task: final.task, reportId: final.report_id,
+        breakdown: final.breakdown, alignment: final.alignment, area: final.area,
+        question: final.question, tools: final.tools,
       } : p));
       pinBottom();
       await new Promise((res) => window.setTimeout(res, 650));
@@ -917,6 +1019,8 @@ function App() {
             role: 'bot', text: d.answer || 'No answer returned.',
             evidence: (d.evidence || []).filter((e) => e.image_b64),
             task: d.task, tools: d.tools_used, confidence: d.confidence,
+            breakdown: d.confidence_breakdown, alignment: d.alignment, area: d.area,
+            question: text,
             trace: d.trace || [], report_id: d.report_id,
             elapsed: (performance.now() - t0) / 1000,
           };
@@ -1003,6 +1107,8 @@ function App() {
 
             <ModelStatus registry={registry} />
 
+            <BenchmarkPanel data={benchmark} />
+
             <SceneInspectorFooter />
           </div>
         </section>
@@ -1058,6 +1164,8 @@ function App() {
                     : null}
                   text={m.text} error={m.error}
                   evidence={m.evidence} confidence={m.confidence} task={m.task}
+                  breakdown={m.breakdown} alignment={m.alignment} area={m.area}
+                  question={m.question} tools={m.tools}
                   reportId={m.report_id} onReport={openReport} onExpand={setViewer}
                 />
               </div>
@@ -1068,6 +1176,8 @@ function App() {
                   thinking={<LiveThinking pending={pending} />}
                   text={pending.answer} streaming={pending.answer != null} streamDone={pending.answerDone}
                   evidence={pending.evidence} confidence={pending.confidence} task={pending.task}
+                  breakdown={pending.breakdown} alignment={pending.alignment} area={pending.area}
+                  question={pending.question} tools={pending.tools}
                   reportId={pending.reportId} onReport={openReport} onExpand={setViewer}
                 />
               </div>

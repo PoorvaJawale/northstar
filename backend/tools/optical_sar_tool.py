@@ -60,9 +60,11 @@ class OpticalSarTool(Tool):
         mask = np.clip(built * 1.0 + water * 0.5, 0, 1)
         self.emit("Fusing modalities", water_pct=round(pct_water, 1),
                   built_up_pct=round(pct_built, 1))
-        ev = Evidence(kind="overlay",
+        from ..geo.alignment import measure_area
+        area = measure_area(int((water > 0).sum()), int(water.size), None)  # water extent
+        ev = Evidence(kind="overlay", color="#2dd4bf",
                       label=f"SAR: water ~{pct_water:.0f}% (dark) + built-up ~{pct_built:.0f}% (bright)",
-                      image_b64=render_mask(images[0], mask),
+                      image_b64=render_mask(images[0], mask), area=area,
                       data={"water_pct": round(pct_water, 1),
                             "built_up_pct": round(pct_built, 1),
                             "sar_low_thresh": round(lo, 3), "sar_high_thresh": round(hi, 3)})
@@ -72,7 +74,7 @@ class OpticalSarTool(Tool):
                 f"surfaces, typically built-up). The optical image supplies land-cover context. "
                 f"Combining the two gives a more reliable read-out of water and built-up extent "
                 f"than either sensor alone.")
-        return ToolResult(text=text, evidence=[ev], confidence=0.82,
+        return ToolResult(text=text, evidence=[ev], confidence=0.82, area=area,
                           tool_name=self.name, params_used=params)
 
     # ---- MOCK inference (MOCK_MODE only) ---------------------------------

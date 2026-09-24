@@ -42,6 +42,13 @@ app.add_middleware(CORSMiddleware, allow_origins=config.CORS_ORIGINS,
 _registry = Registry()
 _controller = Controller(_registry)
 
+# Only ONE model inference runs at a time (GeoChat fills ~5.9GB of 6GB). Model
+# endpoints are sync `def` so FastAPI runs them in its threadpool: the event loop
+# (and fast endpoints like /api/registry, /api/health, /api/session) stay
+# responsive while an inference holds this lock — so the UI never shows "0 online"
+# just because a GeoChat query is running.
+_MODEL_LOCK = threading.Lock()
+
 
 @app.get("/api/health")
 def health():
@@ -110,9 +117,10 @@ def _attach_report(resp) -> None:
 
 
 @app.post("/api/query")
-async def query(text: str = Form(...), images: list[UploadFile] = File(...)):
+def query(text: str = Form(...), images: list[UploadFile] = File(...)):
     metas, arrays = _ingest(images)
-    resp = _controller.run(text, metas, arrays)
+    with _MODEL_LOCK:
+        resp = _controller.run(text, metas, arrays)
     _attach_report(resp)
     return resp.model_dump()
 
@@ -142,8 +150,13 @@ class SuggestIn(BaseModel):
     session_id: str
 
 
+class PlanIn(BaseModel):
+    session_id: str
+    message: str
+
+
 @app.post("/api/session")
-async def create_session(images: list[UploadFile] = File(...)):
+def create_session(images: list[UploadFile] = File(...)):
     """Upload the scene once; returns a session_id used for follow-up chat."""
     metas, arrays = _ingest(images)
     sid = uuid.uuid4().hex[:12]
@@ -151,8 +164,33 @@ async def create_session(images: list[UploadFile] = File(...)):
     return {"session_id": sid, "n_images": len(arrays)}
 
 
+@app.post("/api/plan")
+def plan(body: PlanIn):
+    """Analysis Plan Preview: what the agent WOULD do for this question — the
+    detected task, chosen tool, pipeline steps and inputs — WITHOUT running the
+    model. Fast (no GPU): lets the UI show the plan before executing."""
+    sess = _SESSIONS.get(body.session_id)
+    if sess is None:
+        raise HTTPException(404, "Session not found or expired — please re-upload the image.")
+    text = (body.message or "").strip()
+    if not text:
+        raise HTTPException(400, "Empty message.")
+    return _controller.plan(text, sess["metas"]).model_dump()
+
+
+@app.get("/api/benchmark")
+def benchmark():
+    """Measured model numbers for the 'benchmark table' UI. Reads a JSON file so
+    the team can paste in Kaggle before/after eval numbers without a code change."""
+    bpath = config.ROOT / "backend" / "benchmark.json"
+    try:
+        return json.loads(bpath.read_text(encoding="utf-8"))
+    except Exception:
+        return {"note": "no benchmark data yet", "fine_tune": {}, "models": []}
+
+
 @app.post("/api/chat")
-async def chat(body: ChatIn):
+def chat(body: ChatIn):
     """A follow-up question on an existing session's scene."""
     sess = _SESSIONS.get(body.session_id)
     if sess is None:
@@ -160,7 +198,8 @@ async def chat(body: ChatIn):
     text = (body.message or "").strip()
     if not text:
         raise HTTPException(400, "Empty message.")
-    resp = _controller.run(text, sess["metas"], sess["arrays"])
+    with _MODEL_LOCK:
+        resp = _controller.run(text, sess["metas"], sess["arrays"])
     _attach_report(resp)
     sess["history"].append({"q": text, "a": resp.answer})
     out = resp.model_dump()
@@ -168,8 +207,29 @@ async def chat(body: ChatIn):
     return out
 
 
+@app.post("/api/chat/stream")
+async def chat_stream(body: ChatIn):
+    """A follow-up question on a cached scene, delivered as SSE — one frame per
+    stage boundary + tool progress, then the final result (which now carries
+    confidence_breakdown, alignment and area)."""
+    sess = _SESSIONS.get(body.session_id)
+    if sess is None:
+        raise HTTPException(404, "Session not found or expired — please re-upload the image.")
+    text = (body.message or "").strip()
+    if not text:
+        raise HTTPException(400, "Empty message.")
+    return StreamingResponse(
+        _stream_events(text, sess["metas"], sess["arrays"]),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache, no-transform",
+                 "Connection": "keep-alive",
+                 "X-Accel-Buffering": "no"},
+    )
+
+
 _DEFAULT_SUGGESTIONS = [
     "Describe the land cover and major objects.",
+    "Predict flood risk and disaster impact from this SAR/optical scene.",
     "Is there a water body in this image?",
     "Is this a rural or an urban area?",
     "Highlight the buildings.",
@@ -186,6 +246,7 @@ def _questions_from_caption(caption: str, two_images: bool) -> list[str]:
             qs.append(q)
     if any(w in c for w in ("water", "river", "lake", "coast", "sea", "pond", "reservoir")):
         add("Highlight the water body.")
+        add("Predict flood risk and disaster impact from this scene.")
     if any(w in c for w in ("build", "urban", "city", "settlement", "house")):
         add("Highlight the buildings.")
     if any(w in c for w in ("road", "highway", "street")):
@@ -204,15 +265,16 @@ def _questions_from_caption(caption: str, two_images: bool) -> list[str]:
 
 
 @app.post("/api/suggest")
-async def suggest(body: SuggestIn):
+def suggest(body: SuggestIn):
     """Suggest image-specific questions after upload (captions the first scene)."""
     sess = _SESSIONS.get(body.session_id)
     if sess is None:
         raise HTTPException(404, "Session not found.")
     two = len(sess["arrays"]) > 1
     try:
-        cap = _controller.run("Describe the land cover and major objects in this image.",
-                              sess["metas"][:1], sess["arrays"][:1])
+        with _MODEL_LOCK:
+            cap = _controller.run("Describe the land cover and major objects in this image.",
+                                  sess["metas"][:1], sess["arrays"][:1])
         return {"suggestions": _questions_from_caption(cap.answer, two)}
     except Exception:
         traceback.print_exc()

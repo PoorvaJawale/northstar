@@ -23,8 +23,15 @@ import numpy as np
 from .registry import Registry
 from . import intent as intent_mod
 from .inspector import inspect
+from .confidence import build_confidence
+from ..geo.alignment import compute_alignment, alignment_gsd, coregister
 from ..schemas import (QueryResponse, TraceStep, InputConfig, ImageMeta,
                        ToolResult, Evidence)
+
+# Tasks whose primary output is a spatial mask (so the tool's confidence reads as
+# evidence quality); everything else reads as model/answer certainty.
+_MASK_TASKS = ("change_vqa", "change_map", "cross_modal", "disaster_risk", "flood_map",
+               "landcover_area")
 
 # Human-readable label shown live in the UI while a stage is running.
 STAGE_LABELS: dict[str, str] = {
@@ -41,9 +48,59 @@ def _ev(kind: str, **fields: Any) -> dict[str, Any]:
     return {"type": kind, **fields}
 
 
+_PIPELINE_STEPS = {
+    "change_vqa": ["Validate inputs", "Co-register (CRS / overlap)",
+                   "Change Vector Analysis", "Otsu threshold", "Measure area", "Explain"],
+    "change_map": ["Validate inputs", "Co-register (CRS / overlap)",
+                   "Change Vector Analysis", "Otsu threshold", "Measure area", "Render map"],
+    "cross_modal": ["Validate inputs", "Co-register optical + SAR",
+                    "SAR backscatter thresholding", "Fuse with optical context", "Explain"],
+    "disaster_risk": ["Validate inputs", "Analyse SAR / optical cues",
+                      "Score disaster risk", "Explain"],
+    "flood_map": ["Validate inputs", "Co-register (CRS / overlap)",
+                  "Water-gain detection", "Measure flood extent", "Explain"],
+    "single_vqa": ["Validate input", "GeoChat inference", "Score confidence", "Explain"],
+    "single_caption": ["Validate input", "GeoChat captioning", "Explain"],
+    "single_grounding": ["Validate input", "GeoChat grounding", "Draw region", "Explain"],
+    "landcover_area": ["Validate input", "Segment land-cover class",
+                       "Measure area (GSD)", "Render overlay", "Explain"],
+}
+_EST_SECONDS = {"single_vqa": 6, "single_caption": 6, "single_grounding": 7,
+                "change_vqa": 1, "change_map": 1, "cross_modal": 1,
+                "disaster_risk": 1, "flood_map": 1, "landcover_area": 1}
+
+
 class Controller:
     def __init__(self, registry: Registry | None = None) -> None:
         self.registry = registry or Registry()
+
+    # ---- plan preview (dry run: inspect + classify + select, no execute) --
+    def plan(self, query: str, metas: list[ImageMeta]):
+        """What the agent WOULD do — the pipeline, tool and inputs, without
+        running the model. Powers the frontend's Analysis Plan Preview."""
+        from ..schemas import PlanPreview
+        cfg: InputConfig = inspect(metas)
+        if not cfg.compatible:
+            return PlanPreview(query=query, input_type=cfg.input_type,
+                               n_images=cfg.n_images, compatible=False, note=cfg.issue)
+        try:
+            task, method, _note = intent_mod.classify(query, cfg.input_type)
+        except ValueError as e:
+            return PlanPreview(query=query, input_type=cfg.input_type,
+                               n_images=cfg.n_images, compatible=False, note=str(e))
+        eff_input = "single_image" if (task in ("single_vqa", "single_caption",
+            "single_grounding") and cfg.n_images > 1) else cfg.input_type
+        specs = self.registry.find(task, eff_input)
+        tool = specs[0].name if specs else None
+        inputs = [f"{m.modality} · {m.fmt}" + (f" · {m.crs}" if m.crs else "")
+                  for m in cfg.images]
+        return PlanPreview(
+            query=query, input_type=cfg.input_type, n_images=cfg.n_images,
+            task=task, method=method, tool=tool,
+            pipeline=_PIPELINE_STEPS.get(task, ["Validate", "Run", "Explain"]),
+            inputs=inputs, est_seconds=_EST_SECONDS.get(task),
+            compatible=bool(specs),
+            note=None if specs else f"no tool serves {task} for {eff_input}")
 
     # ---- blocking API (unchanged behaviour) ------------------------------
     def run(self, query: str, metas: list[ImageMeta],
@@ -112,8 +169,11 @@ class Controller:
         # A single-image question asked on a 2-image scene is answered on ONE
         # image, instead of being forced into change/fusion just because two
         # images were uploaded. Only genuine change/fusion questions use both.
-        SINGLE_TASKS = ("single_vqa", "single_caption", "single_grounding")
-        if task in SINGLE_TASKS and cfg.n_images > 1:
+        SINGLE_TASKS = ("single_vqa", "single_caption", "single_grounding", "landcover_area")
+        if task == "disaster_risk":
+            eff_input, exec_arrays = "single_image", arrays
+            route_note = "disaster risk accepts one scene and can use a second scene as supporting evidence"
+        elif task in SINGLE_TASKS and cfg.n_images > 1:
             eff_input, exec_arrays = "single_image", arrays[:1]
             route_note = "single-image question on a multi-image scene -> analysing image 1"
         else:
@@ -134,6 +194,18 @@ class Controller:
             sel_data["routing"] = route_note
         yield done(TraceStep(stage="select",
             detail=f"selected tool={spec.name}", data=sel_data))
+
+        # 3b) CO-REGISTER — true pixel reprojection for multi-image tasks so the
+        # rasters are pixel-for-pixel comparable (falls back to pixel-grid + an
+        # honest report when the inputs aren't georeferenced).
+        if eff_input != "single_image" and len(exec_arrays) >= 2:
+            exec_arrays, alignment = coregister(cfg.images, exec_arrays)
+            trace.append(TraceStep(stage="select", kind="log",
+                detail="co-register: " + (alignment.note or alignment.method),
+                data={"method": alignment.method, "target_crs": alignment.target_crs,
+                      "overlap_pct": alignment.overlap_pct, "gsd_m": alignment.gsd_m}))
+        else:
+            alignment = compute_alignment(cfg.images)
 
         # 4) EXECUTE ------------------------------------------------------
         yield start("execute", f"Running {spec.name} on your imagery")
@@ -159,15 +231,47 @@ class Controller:
         yield start("fuse")
         answer = result.text
         confidence = round(float(result.confidence), 3)
+
+        # `alignment` was computed at the co-register step (true reprojection for
+        # multi-image tasks, or a single-image / pixel-grid report otherwise).
+
+        # explainable confidence: split the scalar into model / evidence / geo
+        if result.confidence_breakdown is not None:
+            breakdown = result.confidence_breakdown
+        else:
+            is_mask = task in _MASK_TASKS
+            breakdown = build_confidence(
+                model=None if is_mask else confidence,
+                evidence_quality=confidence if is_mask else None,
+                align=alignment)
+        # physical extent, if the tool measured one — upgrade the pixel-fraction
+        # the tool reported into real hectares when we know the ground resolution
+        area = result.area
+        gsd = alignment_gsd(alignment, cfg.images)
+        if area is not None and gsd and not area.gsd_m and area.pct:
+            from ..geo.alignment import measure_area
+            total = int(round(area.pixels / (area.pct / 100.0)))
+            area = measure_area(area.pixels, total, gsd)
+
         yield done(TraceStep(stage="fuse",
-            detail="combined textual + spatial outputs",
-            data={"confidence": confidence,
+            detail="combined textual + spatial outputs; scored confidence",
+            data={"confidence": breakdown.overall,
+                  "confidence_dims": {"model": breakdown.model,
+                                      "evidence_quality": breakdown.evidence_quality,
+                                      "geospatial_validity": breakdown.geospatial_validity},
+                  "alignment": {"method": alignment.method,
+                                "target_crs": alignment.target_crs,
+                                "gsd_m": alignment.gsd_m,
+                                "overlap_pct": alignment.overlap_pct},
+                  "area_ha": area.area_ha if area else None,
                   "n_evidence": len(result.evidence)}))
 
         # 6) SUMMARISE (the auditable trace is the response.trace itself) --
         yield _ev("result", response=QueryResponse(
             query=query, task=task, tools_used=[spec.name],
-            answer=answer, confidence=confidence, evidence=result.evidence,
+            answer=answer, confidence=confidence,
+            confidence_breakdown=breakdown, area=area, alignment=alignment,
+            evidence=result.evidence,
             trace=trace, input_config=cfg, ok=True,
         ))
 

@@ -154,6 +154,8 @@ class GeoChatRunner:
                 input_ids=input_ids, images=image_tensor,
                 do_sample=temperature > 0, temperature=temperature,
                 max_new_tokens=max_new_tokens, use_cache=True,
+                repetition_penalty=1.15,   # stop degenerate loops ("the buildings the buildings…")
+                no_repeat_ngram_size=3,    # never repeat a 3-gram
                 stopping_criteria=[stopping],
                 return_dict_in_generate=True, output_scores=True,
             )

@@ -29,6 +29,20 @@ except Exception:                     # pragma: no cover
     _HAS_RASTERIO = False
 
 
+def _ground_sample_distance(ds) -> Optional[float]:
+    """Metres per pixel. Projected CRS -> native x-resolution; geographic (degrees)
+    -> approximate via the scene's mean latitude (1 deg lon ~= 111320 m * cos lat)."""
+    import math
+    xres = abs(ds.transform.a)
+    try:
+        if ds.crs and ds.crs.is_geographic:
+            lat = (ds.bounds.bottom + ds.bounds.top) / 2.0
+            return round(xres * 111320.0 * max(math.cos(math.radians(lat)), 0.1), 3)
+        return round(xres, 3)             # projected CRS: units are metres
+    except Exception:
+        return round(xres, 3)
+
+
 def _guess_modality(bands: int, filename: str) -> Modality:
     """Heuristic modality guess. The user/registry can override this later.
 
@@ -86,11 +100,18 @@ def read_image(path: str | Path) -> tuple[ImageMeta, np.ndarray]:
                 georef = ds.crs is not None
                 bounds = list(ds.bounds) if georef else None
                 fmt = "GeoTIFF" if georef else "TIFF"
+                crs_str, gsd, tform = None, None, None
+                if georef:
+                    epsg = ds.crs.to_epsg()
+                    crs_str = f"EPSG:{epsg}" if epsg else ds.crs.to_string()
+                    gsd = _ground_sample_distance(ds)
+                    tform = list(ds.transform)[:6]     # affine (a,b,c,d,e,f)
                 meta = ImageMeta(
                     filename=path.name, fmt=fmt,
                     width=ds.width, height=ds.height, bands=ds.count,
                     modality=_guess_modality(ds.count, path.name),
-                    georeferenced=georef, bounds=bounds,
+                    georeferenced=georef, bounds=bounds, crs=crs_str, gsd=gsd,
+                    transform=tform,
                     preview_png_b64=_to_preview_png_b64(arr),
                 )
                 return meta, arr

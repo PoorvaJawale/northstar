@@ -1105,3 +1105,41 @@ button:active { transform: scale(0.97); }
   .glass, .mission-bar { background: #f8fafc; backdrop-filter: none; -webkit-backdrop-filter: none; }
   .theme-dark .glass, .theme-dark .mission-bar { background: #0d141b; }
 }
+
+/* ===== Evidence-first additions (ported from main, themed to Kartik's tokens) ===== */
+/* CRS / GSD / overlap / area ribbon */
+.meta-ribbon { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 2px; }
+.meta-chip { font: 11px var(--font-mono); color: var(--accent); background: var(--accent-light);
+  border: 1px solid var(--accent-border); border-radius: 12px; padding: 2px 9px; }
+
+/* Explainable confidence — dimensions + reasons (reuses .bot-conf/.conf-top/.k-meter) */
+.conf-cal { margin-left: auto; font: 10px var(--font-mono); color: var(--ink-faint); }
+.conf-dim { display: grid; grid-template-columns: 118px 1fr 40px; align-items: center; gap: 8px; margin-top: 5px; }
+.conf-dim-name { font-size: 11.5px; color: var(--ink-dim); }
+.conf-dim-val { font: 11px var(--font-mono); color: var(--ink-faint); text-align: right; }
+.conf-reasons { margin: 8px 0 0; padding: 8px 10px 8px 22px; list-style: disc;
+  background: var(--line-soft); border-radius: 8px; }
+.conf-reasons li { font-size: 11.5px; color: var(--ink-dim); line-height: 1.5; }
+
+/* Evidence Explorer */
+.why-panel { margin-top: 8px; }
+.why-toggle { background: none; border: none; color: var(--accent); font-size: 12.5px; font-weight: 600;
+  cursor: pointer; padding: 2px 0; }
+.why-chain { list-style: none; margin: 6px 0 0; padding: 8px 10px; background: var(--line-soft);
+  border: 1px solid var(--line); border-radius: 10px; }
+.why-chain li { display: grid; grid-template-columns: 104px 1fr; gap: 10px; padding: 4px 0;
+  border-bottom: 1px solid var(--line-soft); }
+.why-chain li:last-child { border-bottom: none; }
+.why-k { font: 10px var(--font-mono); letter-spacing: .04em; color: var(--accent); text-transform: uppercase; }
+.why-v { font-size: 12.5px; color: var(--ink-dim); }
+
+/* Benchmark panel (left scene rail) */
+.bench-head { cursor: pointer; }
+.bench-body { margin-top: 8px; }
+.bench-ft { font-size: 11.5px; color: var(--ink-dim); line-height: 1.6; }
+.bench-ft b { color: var(--ink); }
+.bench-acc { font: 10.5px var(--font-mono); color: var(--ink-faint); margin-top: 2px; }
+.bench-table { width: 100%; border-collapse: collapse; margin-top: 6px; }
+.bench-table td { font-size: 11px; color: var(--ink-dim); padding: 3px 4px; border-top: 1px solid var(--line-soft); }
+.bench-table .bm { color: var(--ink-faint); }
+.bench-table .bn { text-align: right; font: 11px var(--font-mono); color: var(--success); }
