@@ -154,6 +154,31 @@ const ICON_PATHS = {
       <path d="M10 3.5V6M14 3.5V6M10 18v2.5M14 18v2.5M3.5 10H6M3.5 14H6M18 10h2.5M18 14h2.5" />
     </>
   ),
+  sun: (
+    <>
+      <circle className="ri-fill" cx="12" cy="12" r="4" />
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 2.5v2.5M12 19v2.5M4.93 4.93l1.77 1.77M17.3 17.3l1.77 1.77M2.5 12h2.5M19 12h2.5M4.93 19.07l1.77-1.77M17.3 6.7l1.77-1.77" />
+    </>
+  ),
+  moon: (
+    <>
+      <path className="ri-fill" d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.389 5.389 0 0 1-4.4 2.26 5.403 5.403 0 0 1-3.14-9.8A9 9 0 0 0 12 3Z" />
+      <path d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.389 5.389 0 0 1-4.4 2.26 5.403 5.403 0 0 1-3.14-9.8A9 9 0 0 0 12 3Z" />
+    </>
+  ),
+  plus: (
+    <>
+      <path d="M12 5v14M5 12h14" />
+    </>
+  ),
+  info: (
+    <>
+      <circle className="ri-fill" cx="12" cy="12" r="8.5" />
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M12 16v-4M12 8h.01" />
+    </>
+  ),
 };
 
 function RuneIcon({ name, size = 16 }) {
@@ -219,6 +244,224 @@ function ZoomImage({ src, caption, evidence, onExpand }) {
       <button type="button" className="expand-btn" aria-label="Expand image" onClick={() => onExpand({ src, label: caption })}>
         <RuneIcon name="expand" size={14} />
       </button>
+    </div>
+  );
+}
+
+/* Format file size cleanly */
+function formatFileSize(bytes) {
+  if (!bytes || bytes === 0) return '—';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return `${(bytes / Math.pow(k, i)).toFixed(1)} ${sizes[i]}`;
+}
+
+/* Extract clean file format from name */
+function getFileFormat(filename) {
+  if (!filename) return 'Raster';
+  const ext = filename.split('.').pop().toLowerCase();
+  if (ext === 'tif' || ext === 'tiff') return 'GeoTIFF';
+  if (ext === 'png') return 'PNG';
+  if (ext === 'jpg' || ext === 'jpeg') return 'JPEG';
+  if (ext === 'webp') return 'WebP';
+  return ext.toUpperCase();
+}
+
+/* ---------- Scene Inspector Subcomponents ---------- */
+
+function SceneHeader({ count = 0, max = 2 }) {
+  return (
+    <div className="scene-header">
+      <div className="scene-header-title">
+        <span className="kicker">✦ EARTH OBSERVATION DATA</span>
+        <h2>Scene Inspector</h2>
+      </div>
+      <div className="scene-counter" title="Active scenes loaded">
+        <span className="counter-num">{count}</span>
+        <span className="counter-sep">/</span>
+        <span className="counter-max">{max}</span>
+      </div>
+    </div>
+  );
+}
+
+function SceneDropCard({ onUpload }) {
+  return (
+    <label htmlFor="scene-upload" className="drop-card">
+      <span className="drop-icon"><RuneIcon name="upload" size={22} /></span>
+      <strong>Add a satellite image</strong>
+      <small>One image, or two for change / optical–SAR.<br />GeoTIFF · TIFF · PNG · JPEG</small>
+      <span className="drop-cta"><RuneIcon name="image" size={13} /> Browse files</span>
+    </label>
+  );
+}
+
+function ScenePreview({ files, previews, activeIndex, onSelectIndex, dimensions, onExpand, onReplace, onAdd, onRemove }) {
+  const activeFile = files[activeIndex] || files[0];
+  const activePreview = previews[activeIndex] || previews[0];
+  const activeDims = dimensions[activeIndex];
+  const format = getFileFormat(activeFile?.name);
+
+  return (
+    <div className="scene-preview-card">
+      {files.length > 1 && (
+        <div className="scene-tabs" role="tablist" aria-label="Loaded scenes">
+          {files.map((f, i) => (
+            <button
+              key={i}
+              type="button"
+              role="tab"
+              aria-selected={activeIndex === i}
+              className={`scene-tab ${activeIndex === i ? 'is-active' : ''}`}
+              onClick={() => onSelectIndex(i)}
+            >
+              <span className="tab-tag">{i === 0 ? 'T1' : 'T2'}</span>
+              <span className="tab-name" title={f.name}>{f.name}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      <div className="scene-viewport">
+        <ZoomImage
+          src={activePreview}
+          caption={activeFile?.name || `Scene ${activeIndex + 1}`}
+          onExpand={onExpand}
+        />
+        <div className="scene-viewport-badge">
+          <KBadge tone="info">{activeIndex === 0 ? 'T1' : 'T2'}</KBadge>
+        </div>
+      </div>
+
+      <div className="scene-summary">
+        <span className="scene-filename" title={activeFile?.name}>{activeFile?.name}</span>
+        <span className="scene-details">
+          {format} {activeDims ? `• ${activeDims}` : ''}
+        </span>
+      </div>
+
+      <div className="scene-actions">
+        <button
+          type="button"
+          className="k-btn k-btn-primary k-btn-sm action-btn"
+          onClick={onReplace}
+          title="Replace the current image"
+        >
+          <RuneIcon name="upload" size={13} /> Replace image
+        </button>
+        {files.length < 2 && (
+          <button
+            type="button"
+            className="k-btn k-btn-secondary k-btn-sm action-btn"
+            onClick={onAdd}
+            title="Add second scene for bi-temporal change / optical-SAR fusion"
+          >
+            <RuneIcon name="plus" size={13} /> + Add scene
+          </button>
+        )}
+        {files.length > 1 && (
+          <button
+            type="button"
+            className="k-btn k-btn-ghost k-btn-xs remove-btn"
+            onClick={() => onRemove(activeIndex)}
+            title={`Remove ${activeIndex === 0 ? 'T1' : 'T2'}`}
+          >
+            <RuneIcon name="x" size={12} /> Remove
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function SceneMetadata({ file, index, dimensions }) {
+  const format = getFileFormat(file?.name);
+  const size = formatFileSize(file?.size);
+  const dims = dimensions[index];
+
+  return (
+    <div className="scene-section scene-meta-section">
+      <div className="sec-title">
+        <span>✦ SCENE INFORMATION</span>
+        <span className="sec-meta">{index === 0 ? 'T1 (Baseline)' : 'T2 (Comparison)'}</span>
+      </div>
+      <div className="meta-table">
+        <div className="meta-row">
+          <span className="meta-label">Format</span>
+          <span className="meta-value">{format}</span>
+        </div>
+        <div className="meta-row">
+          <span className="meta-label">Dimensions</span>
+          <span className="meta-value">{dims ? `${dims} px` : '—'}</span>
+        </div>
+        <div className="meta-row">
+          <span className="meta-label">File size</span>
+          <span className="meta-value">{size}</span>
+        </div>
+        <div className="meta-row">
+          <span className="meta-label">Sensor</span>
+          <span className="meta-value is-muted">Not available</span>
+        </div>
+        <div className="meta-row">
+          <span className="meta-label">Location</span>
+          <span className="meta-value is-muted">Not available</span>
+        </div>
+        <div className="meta-row">
+          <span className="meta-label">Acquisition</span>
+          <span className="meta-value is-muted">Not available</span>
+        </div>
+        <div className="meta-row">
+          <span className="meta-label">Resolution</span>
+          <span className="meta-value is-muted">Not available</span>
+        </div>
+        <div className="meta-row">
+          <span className="meta-label">Bands</span>
+          <span className="meta-value is-muted">Not available</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ModelStatus({ registry = [] }) {
+  const models = registry.length
+    ? registry
+    : [{ name: 'geochat' }, { name: 'change' }, { name: 'optical_sar' }];
+
+  const formatName = (name) => {
+    if (name === 'geochat') return 'GeoChat';
+    if (name === 'change') return 'Change';
+    if (name === 'optical_sar') return 'Optical-SAR';
+    return name;
+  };
+
+  return (
+    <div className="scene-section scene-models-section">
+      <div className="sec-title">
+        <span>✦ AI MODELS</span>
+        <span className="sec-meta">{models.length} online</span>
+      </div>
+      <div className="model-status-list">
+        {models.map((m) => (
+          <div key={m.name} className="model-status-item">
+            <span className="model-name">
+              <i className="status-dot online" />
+              {formatName(m.name)}
+            </span>
+            <span className="model-state">Online</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function SceneInspectorFooter() {
+  return (
+    <div className="scene-inspector-footer">
+      <RuneIcon name="clock" size={12} />
+      <span>Background follows IST · day / night imagery crossfades automatically</span>
     </div>
   );
 }
@@ -374,9 +617,13 @@ function BotBubble({ thinking, text, streaming, streamDone, evidence, confidence
 
 function App() {
   const fileInputRef = useRef(null);
+  const addSceneInputRef = useRef(null);
   const threadRef = useRef(null);
+  const [theme, setTheme] = useState(() => localStorage.getItem('satquery-theme') || 'light');
   const [files, setFiles] = useState([]);
   const [previews, setPreviews] = useState([]);
+  const [dimensions, setDimensions] = useState({});
+  const [activeSceneIndex, setActiveSceneIndex] = useState(0);
   const [sessionId, setSessionId] = useState(null);
   const [suggestions, setSuggestions] = useState([]);
   const [suggestLoading, setSuggestLoading] = useState(false);
@@ -388,6 +635,11 @@ function App() {
   const [live, setLive] = useState(false);
   const [registry, setRegistry] = useState([]);
   const [viewer, setViewer] = useState(null);
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('satquery-theme', theme);
+  }, [theme]);
 
   useEffect(() => { loadHealth(); loadRegistry(); }, []);
   useEffect(() => { threadRef.current?.scrollTo({ top: threadRef.current.scrollHeight, behavior: 'smooth' }); }, [messages, loading]);
@@ -409,8 +661,20 @@ function App() {
     const picked = Array.from(fileList).slice(0, 2);
     if (!picked.length) return;
     setFiles(picked);
-    setPreviews(picked.map((f) => URL.createObjectURL(f)));
+    const newPreviews = picked.map((f) => URL.createObjectURL(f));
+    setPreviews(newPreviews);
+    setActiveSceneIndex(0);
     setMessages([]); setSuggestions([]); setSessionId(null);
+
+    // Read dimensions from images
+    newPreviews.forEach((src, idx) => {
+      const img = new Image();
+      img.onload = () => {
+        setDimensions((prev) => ({ ...prev, [idx]: `${img.naturalWidth} × ${img.naturalHeight}` }));
+      };
+      img.src = src;
+    });
+
     const fd = new FormData();
     picked.forEach((f) => fd.append('images', f));
     try {
@@ -418,6 +682,22 @@ function App() {
       setSessionId(s.session_id);
       fetchSuggestions(s.session_id);
     } catch (err) { alert(`Could not load the image: ${err}`); }
+  }
+
+  async function addScene(fileList) {
+    const additional = Array.from(fileList);
+    if (!additional.length) return;
+    const merged = [...files, ...additional].slice(0, 2);
+    await startSession(merged);
+  }
+
+  function removeScene(indexToRemove) {
+    const remaining = files.filter((_, i) => i !== indexToRemove);
+    if (remaining.length === 0) {
+      uploadNew();
+    } else {
+      startSession(remaining);
+    }
   }
 
   async function fetchSuggestions(sid) {
@@ -638,8 +918,8 @@ function App() {
   const lastConf = [...messages].reverse().find((m) => m.role === 'bot' && m.confidence != null);
 
   return (
-    <div className="page">
-      <IndiaBackground />
+    <div className={`page theme-${theme}`} data-theme={theme}>
+      <IndiaBackground theme={theme} />
       <div className="tricolor" />
 
       {/* Mission bar — Kumo page-header block language, floating over earth */}
@@ -656,87 +936,64 @@ function App() {
           <span className="nav-item"><RuneIcon name="chat" size={13} />Conversation</span>
           <span className="nav-item nav-hide"><RuneIcon name="file" size={13} />Reports</span>
         </nav>
+        <div className="mission-actions">
+          <button
+            type="button"
+            className="theme-toggle-btn"
+            onClick={() => setTheme((t) => (t === 'light' ? 'dark' : 'light'))}
+            title={`Switch to ${theme === 'light' ? 'Dark' : 'Light'} mode`}
+            aria-label={`Switch to ${theme === 'light' ? 'Dark' : 'Light'} mode`}
+          >
+            <RuneIcon name={theme === 'light' ? 'moon' : 'sun'} size={14} />
+            <span className="theme-toggle-text">{theme === 'light' ? 'Dark mode' : 'Light mode'}</span>
+          </button>
+        </div>
       </header>
 
       <input id="scene-upload" ref={fileInputRef} className="file-input" type="file"
         accept=".tif,.tiff,.png,.jpg,.jpeg" multiple onChange={(e) => startSession(e.target.files)} />
+      <input id="scene-add" ref={addSceneInputRef} className="file-input" type="file"
+        accept=".tif,.tiff,.png,.jpg,.jpeg" onChange={(e) => addScene(e.target.files)} />
 
       <main className="workspace">
-        {/* LEFT: scene layer card */}
-        <section className="glass scene-card" aria-label="Scene" style={{ '--d': '0ms' }}>
-          <div className="card-head">
-            <div>
-              <p className="kicker"><RuneIcon name="globe" size={12} /> Earth observation data</p>
-              <h2>Loaded scene</h2>
-            </div>
-            {hasScene && <span className="count-pill">{files.length}/2</span>}
-          </div>
+        {/* LEFT: Scene Inspector Panel */}
+        <section className="glass scene-card scene-inspector" aria-label="Earth Observation Scene Inspector" style={{ '--d': '0ms' }}>
+          <SceneHeader count={files.length} max={2} />
 
           {!hasScene ? (
-            <label htmlFor="scene-upload" className="drop-card">
-              <span className="drop-icon"><RuneIcon name="upload" size={22} /></span>
-              <strong>Add a satellite image</strong>
-              <small>One image, or two for change / optical–SAR.<br />GeoTIFF · TIFF · PNG · JPEG</small>
-              <span className="drop-cta"><RuneIcon name="image" size={13} /> Browse files</span>
-            </label>
+            <SceneDropCard onUpload={() => fileInputRef.current?.click()} />
           ) : (
             <>
-              <div className="scene-list">
-                {previews.map((src, i) => (
-                  <div className="scene-item reveal" key={i} style={{ '--d': `${i * 70}ms` }}>
-                    <ZoomImage src={src} caption={files[i]?.name || `Scene ${i + 1}`} onExpand={setViewer} />
-                    <div className="scene-meta">
-                      <RuneIcon name="image" size={12} />
-                      <span title={files[i]?.name}>{files[i]?.name}</span>
-                      <KBadge tone="neutral">{i === 0 ? 'T1' : 'T2'}</KBadge>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div className="scene-actions">
-                <button type="button" className="k-btn k-btn-secondary k-btn-sm" onClick={uploadNew}>
-                  <RuneIcon name="upload" size={13} /> New image
-                </button>
-                <button type="button" className="k-btn k-btn-ghost k-btn-sm" onClick={() => fileInputRef.current?.click()}>
-                  <RuneIcon name="layers" size={13} /> Replace
-                </button>
-              </div>
+              <ScenePreview
+                files={files}
+                previews={previews}
+                activeIndex={activeSceneIndex}
+                onSelectIndex={setActiveSceneIndex}
+                dimensions={dimensions}
+                onExpand={setViewer}
+                onReplace={() => fileInputRef.current?.click()}
+                onAdd={() => addSceneInputRef.current?.click()}
+                onRemove={removeScene}
+              />
+
+              <SceneMetadata
+                file={files[activeSceneIndex] || files[0]}
+                index={activeSceneIndex}
+                dimensions={dimensions}
+              />
             </>
           )}
 
-          <div className="card-sec">
-            <div className="sec-title"><span>Specialist models</span><span className="sec-meta">{registry.length || 3} online</span></div>
-            <div className="model-badges">
-              {(registry.length ? registry : [{ name: 'geochat' }, { name: 'change' }, { name: 'optical_sar' }]).map((t) => (
-                <KBadge key={t.name} tone="success" dot>{t.name}</KBadge>
-              ))}
-            </div>
-          </div>
+          <ModelStatus registry={registry} />
 
-          {lastConf?.confidence != null && (() => {
-            const pct = Math.round(Number(lastConf.confidence) * 100);
-            return (
-              <div className="card-sec insight">
-                <div className="sec-title"><span>Latest confidence</span><span className="sec-meta">{confidenceWord(pct)}</span></div>
-                <div className="k-meter" role="meter" aria-valuenow={pct} aria-valuemin="0" aria-valuemax="100">
-                  <span className={pct >= 80 ? 'hi' : pct >= 60 ? 'mid' : 'lo'} style={{ width: `${pct}%` }} />
-                </div>
-                <div className="insight-num">{pct}<small>%</small></div>
-              </div>
-            );
-          })()}
-
-          <div className="card-foot">
-            <RuneIcon name="clock" size={12} />
-            <span>Background follows IST · day / night imagery crossfades automatically</span>
-          </div>
+          <SceneInspectorFooter />
         </section>
 
         {/* RIGHT: conversational assistant */}
         <section className="glass chat-card" aria-label="Assistant" style={{ '--d': '90ms' }}>
           <div className="card-head">
             <div>
-              <p className="kicker"><RuneIcon name="spark" size={12} /> AI assistant</p>
+              <p className="kicker">✦ AI ASSISTANT</p>
               <h2>Conversation</h2>
             </div>
           </div>
