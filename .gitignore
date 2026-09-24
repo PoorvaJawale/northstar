@@ -43,3 +43,8 @@ frontend/dist/
 # OS
 .DS_Store
 Thumbs.db
+
+# Runtime chat store (SQLite) — generated at runtime, not source
+satquery.db
+satquery.db-shm
+satquery.db-wal
