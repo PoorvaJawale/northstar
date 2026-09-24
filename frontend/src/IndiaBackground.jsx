@@ -71,7 +71,7 @@ export default function IndiaBackground() {
       <img className="india-bg-img" src="/backgrounds/india-night.webp" alt=""
         draggable="false" loading="lazy" style={{ opacity: p.night ? 1 : 0, filter: filt }} />
       <div className="india-bg-warm" style={{ opacity: p.warm }} />
-      <div className="india-bg-overlay" style={{ background: `rgba(5, 10, 14, ${p.o})` }} />
+      <div className="india-bg-overlay" style={{ background: `rgba(5, 10, 14, ${(p.o * 0.28).toFixed(2)})` }} />
       <div className="india-bg-label">INDIA · NOW<br /><b>{hh}:{mmm} IST</b><br />{p.label}</div>
     </div>
   );

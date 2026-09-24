@@ -17,10 +17,29 @@ app still runs in MOCK mode without any of this.
 """
 from __future__ import annotations
 import os
+import re
 from typing import Optional
 
 import numpy as np
 from PIL import Image
+
+
+def _collapse_repeats(text: str) -> str:
+    """Collapse degenerate decode loops in the DECODED text (safe post-processing,
+    no CUDA logits processors — those crash GeoChat because its input_ids carry a
+    negative image-placeholder token). Turns 'the buildings the buildings the
+    buildings' -> 'the buildings' and 'yes yes yes' -> 'yes'."""
+    if not text:
+        return text
+    prev = None
+    # collapse a repeated phrase (2-60 chars) that recurs consecutively
+    for _ in range(4):
+        text = re.sub(r'(?i)\b(.{2,60}?)(?:\s+\1\b){2,}', r'\1', text)
+        text = re.sub(r'(?i)\b(\w+)(?:\s+\1\b){2,}', r'\1', text)
+        if text == prev:
+            break
+        prev = text
+    return re.sub(r'\s{2,}', ' ', text).strip()
 
 
 def _install_low_vram_offload(cap: str) -> None:
@@ -160,6 +179,7 @@ class GeoChatRunner:
         seq = out.sequences[0, input_ids.shape[1]:]
         text = self.tokenizer.decode(seq, skip_special_tokens=True).strip()
         text = text.replace(stop_str, "").strip()
+        text = _collapse_repeats(text)   # kill degenerate loops safely, post-decode
         conf = self._confidence(out.scores)
         return text, conf, prompt
 

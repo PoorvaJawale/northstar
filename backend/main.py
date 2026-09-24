@@ -207,6 +207,26 @@ def chat(body: ChatIn):
     return out
 
 
+@app.post("/api/chat/stream")
+async def chat_stream(body: ChatIn):
+    """A follow-up question on a cached scene, delivered as SSE — one frame per
+    stage boundary + tool progress, then the final result (which now carries
+    confidence_breakdown, alignment and area)."""
+    sess = _SESSIONS.get(body.session_id)
+    if sess is None:
+        raise HTTPException(404, "Session not found or expired — please re-upload the image.")
+    text = (body.message or "").strip()
+    if not text:
+        raise HTTPException(400, "Empty message.")
+    return StreamingResponse(
+        _stream_events(text, sess["metas"], sess["arrays"]),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache, no-transform",
+                 "Connection": "keep-alive",
+                 "X-Accel-Buffering": "no"},
+    )
+
+
 _DEFAULT_SUGGESTIONS = [
     "Describe the land cover and major objects.",
     "Predict flood risk and disaster impact from this SAR/optical scene.",

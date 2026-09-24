@@ -213,13 +213,26 @@ class Controller:
         # worker thread and pushes fine-grained progress ("loading weights",
         # "generating…") through a queue we drain live while it works.
         logs: list[TraceStep] = []
-        for event in self._execute(spec, task, exec_arrays, query, params):
-            if event["type"] == "log":
-                logs.append(TraceStep(stage="execute", kind="log",
-                                      detail=event["message"], data=event["data"]))
-                yield event
-            else:
-                result: ToolResult = event["result"]
+        result = None
+        try:
+            for event in self._execute(spec, task, exec_arrays, query, params):
+                if event["type"] == "log":
+                    logs.append(TraceStep(stage="execute", kind="log",
+                                          detail=event["message"], data=event["data"]))
+                    yield event
+                else:
+                    result = event["result"]
+        except Exception as exc:                     # tool failed (e.g. GPU OOM on load)
+            trace.extend(logs)
+            oom = "out of memory" in str(exc).lower() or "enough GPU" in str(exc)
+            msg = (f"The {spec.name} model ran out of GPU memory while loading. "
+                   "Free the GPU (close other apps / restart the backend) and retry."
+                   if oom else f"The {spec.name} model failed: {exc}")
+            yield done(TraceStep(stage="execute", detail=f"{spec.name} failed: {exc}"))
+            yield _ev("result", response=QueryResponse(
+                query=query, task=task, tools_used=[spec.name], input_config=cfg,
+                trace=trace, ok=False, error=str(exc), answer=msg))
+            return
         yield done(TraceStep(stage="execute",
             detail=f"ran {spec.name}",
             data={"tool_confidence": result.confidence,
