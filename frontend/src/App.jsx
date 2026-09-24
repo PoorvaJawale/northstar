@@ -1,4 +1,44 @@
 import { useEffect, useRef, useState } from 'react';
+import lottie from 'lottie-web/build/player/lottie_light';
+import {
+  Satellite,
+  UploadCloud,
+  Upload,
+  FolderOpen,
+  Image as ImageIcon,
+  Plus,
+  Trash2,
+  X,
+  Maximize2,
+  ZoomIn,
+  ZoomOut,
+  RotateCcw,
+  Sun,
+  Moon,
+  Sparkles,
+  ArrowUp,
+  Send,
+  MessageSquare,
+  Cpu,
+  Globe,
+  GitCompareArrows,
+  Layers,
+  ShieldAlert,
+  Earth,
+  Bot,
+  FileDown,
+  FileText,
+  CheckCircle2,
+  CircleAlert,
+  AlertTriangle,
+  Check,
+  Clock,
+  ChevronDown,
+  ChartNoAxesCombined,
+  LoaderCircle,
+  Settings,
+  Info
+} from 'lucide-react';
 import IndiaBackground from './IndiaBackground';
 
 /* ------------------------------------------------------------------
@@ -7,19 +47,7 @@ import IndiaBackground from './IndiaBackground';
  * calm-dark glass language, split-studio (scene left / chat right).
  * Dials: VARIANCE 7 / MOTION 6 / DENSITY 5.
  *
- * Borrowed inspiration (honest labels, hand-built — not official pkgs):
- * - "Thinking trace / Tool chips / Task rows / Prompt bar / Insight
- *    confidence" patterns inspired by beautifului.dev AI primitives.
- * - "Badge / Button variants / Meter / Layer card" language inspired
- *    by kumo-ui.com (Cloudflare Kumo). No @cloudflare/kumo dep — the
- *    classes below are a local approximation for offline use.
- * - Duotone glyphs inspired by runeicons.com (one glyph, five moods;
- *    we ship the duotone mood: soft fill + crisp stroke on a 24px grid).
- * - Split-studio composition + grotesk-sans evidence from Inspo study.
- *
- * Preserved: IndiaBackground earth + IST dynamic phases + glass panes.
- * Shape rule: cards 14px, inputs 10px, pills fully round. One accent:
- * warm saffron #ffa02e locked across CTAs, dots, meters.
+ * Icons upgraded to Lucide React (stroke width 1.8px, semantic GIS/AI icons).
  * ------------------------------------------------------------------ */
 
 const taskLabels = {
@@ -48,204 +76,271 @@ function confidenceWord(pct) {
   return 'Limited confidence';
 }
 
-/* ---------- Rune-style duotone icon (inspired by runeicons.com) ----------
- * Duotone mood = translucent fill layer + full-strength stroke layer.
- * 24px grid, stroke 1.7, round caps. Inline — no icon package needed. */
-const ICON_PATHS = {
-  satellite: (
-    <>
-      <path className="ri-fill" d="M9.5 14.5 14.5 9.5l3 3-5 5-3-3Z" />
-      <path d="M9.5 14.5 14.5 9.5l3 3-5 5-3-3Z" />
-      <path d="M6.5 17.5 4 20M17.5 6.5 20 4M7 11l2 2M13 17l2 2M11 7l2 2M17 11l-2 2" />
-      <path className="ri-fill" d="M12.6 7.6 16.4 3.8l3.8 3.8-3.8 3.8-3.8-3.8Z" />
-      <path d="M12.6 7.6 16.4 3.8l3.8 3.8-3.8 3.8-3.8-3.8ZM4 13.5l3.5-3.5 3 3L7 16.5 4 13.5Z" />
-    </>
-  ),
-  image: (
-    <>
-      <rect className="ri-fill" x="3.5" y="5" width="17" height="14" rx="2.5" />
-      <rect x="3.5" y="5" width="17" height="14" rx="2.5" />
-      <circle className="ri-fill" cx="9" cy="10" r="1.8" />
-      <path d="M4.5 17.5 10 12l3.5 3.5 3-3 3 3.5" />
-    </>
-  ),
-  upload: (
-    <>
-      <path className="ri-fill" d="M12 15.5v-11M7.5 8 12 3.5 16.5 8" opacity="0" />
-      <path d="M12 15.5v-11M7.5 8 12 3.5 16.5 8" />
-      <path className="ri-fill" d="M4.5 15v3.5h15V15" opacity="0" />
-      <path d="M4.5 15v2.5a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V15" />
-    </>
-  ),
-  chat: (
-    <>
-      <path className="ri-fill" d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v7a2.5 2.5 0 0 1-2.5 2.5H9l-5 4V6.5Z" />
-      <path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v7a2.5 2.5 0 0 1-2.5 2.5H9l-5 4V6.5Z" />
-      <path d="M8 9.5h8M8 12.5h5" />
-    </>
-  ),
-  spark: (
-    <>
-      <path className="ri-fill" d="M12 3.5 13.8 10l6.7 2-6.7 2L12 20.5 10.2 14l-6.7-2 6.7-2L12 3.5Z" />
-      <path d="M12 3.5 13.8 10l6.7 2-6.7 2L12 20.5 10.2 14l-6.7-2 6.7-2L12 3.5Z" />
-      <path d="M18.5 3.5v4M16.5 5.5h4" />
-    </>
-  ),
-  check: (
-    <>
-      <circle className="ri-fill" cx="12" cy="12" r="8.5" />
-      <circle cx="12" cy="12" r="8.5" />
-      <path d="m8.2 12.4 2.7 2.7 5-5.6" />
-    </>
-  ),
-  alert: (
-    <>
-      <path className="ri-fill" d="M12 3.8 21 19.5H3L12 3.8Z" />
-      <path d="M12 3.8 21 19.5H3L12 3.8Z" />
-      <path d="M12 9.5v4.5" />
-      <circle cx="12" cy="16.6" r="0.4" />
-    </>
-  ),
-  file: (
-    <>
-      <path className="ri-fill" d="M6.5 3.5h7l4 4v13h-11v-17Z" />
-      <path d="M6.5 3.5h7l4 4v13h-11v-17ZM13.5 3.5v4h4" />
-      <path d="M9.5 12.5h5M9.5 15.5h5" />
-    </>
-  ),
-  clock: (
-    <>
-      <circle className="ri-fill" cx="12" cy="12" r="8.5" />
-      <circle cx="12" cy="12" r="8.5" />
-      <path d="M12 7.5V12l3 2" />
-    </>
-  ),
-  globe: (
-    <>
-      <circle className="ri-fill" cx="12" cy="12" r="8.5" />
-      <circle cx="12" cy="12" r="8.5" />
-      <path d="M3.5 12h17M12 3.5c2.6 2.3 3.9 5.2 3.9 8.5s-1.3 6.2-3.9 8.5c-2.6-2.3-3.9-5.2-3.9-8.5s1.3-6.2 3.9-8.5Z" />
-    </>
-  ),
-  send: (
-    <>
-      <path className="ri-fill" d="M20.5 3.5 10.8 13.2M20.5 3.5 14 20.5l-3.2-7.3-7.3-3.2 17-6.5Z" />
-      <path d="M20.5 3.5 10.8 13.2M20.5 3.5 14 20.5l-3.2-7.3-7.3-3.2 17-6.5Z" />
-    </>
-  ),
-  expand: (
-    <>
-      <path d="M15 3.5h5.5V9M9 20.5H3.5V15M20.5 3.5 14 10M3.5 20.5 10 14" />
-    </>
-  ),
-  x: (
-    <>
-      <path d="M6 6l12 12M18 6 6 18" />
-    </>
-  ),
-  layers: (
-    <>
-      <path className="ri-fill" d="m12 3.5 8.5 4.5L12 12.5 3.5 8 12 3.5Z" />
-      <path d="m12 3.5 8.5 4.5L12 12.5 3.5 8 12 3.5ZM4.5 12 12 16l7.5-4M4.5 16 12 20l7.5-4" />
-    </>
-  ),
-  cpu: (
-    <>
-      <rect className="ri-fill" x="7" y="7" width="10" height="10" rx="2" />
-      <rect x="7" y="7" width="10" height="10" rx="2" />
-      <path d="M10 3.5V6M14 3.5V6M10 18v2.5M14 18v2.5M3.5 10H6M3.5 14H6M18 10h2.5M18 14h2.5" />
-    </>
-  ),
-  sun: (
-    <>
-      <circle className="ri-fill" cx="12" cy="12" r="4" />
-      <circle cx="12" cy="12" r="4" />
-      <path d="M12 2.5v2.5M12 19v2.5M4.93 4.93l1.77 1.77M17.3 17.3l1.77 1.77M2.5 12h2.5M19 12h2.5M4.93 19.07l1.77-1.77M17.3 6.7l1.77-1.77" />
-    </>
-  ),
-  moon: (
-    <>
-      <path className="ri-fill" d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.389 5.389 0 0 1-4.4 2.26 5.403 5.403 0 0 1-3.14-9.8A9 9 0 0 0 12 3Z" />
-      <path d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.389 5.389 0 0 1-4.4 2.26 5.403 5.403 0 0 1-3.14-9.8A9 9 0 0 0 12 3Z" />
-    </>
-  ),
-  plus: (
-    <>
-      <path d="M12 5v14M5 12h14" />
-    </>
-  ),
-  info: (
-    <>
-      <circle className="ri-fill" cx="12" cy="12" r="8.5" />
-      <circle cx="12" cy="12" r="8.5" />
-      <path d="M12 16v-4M12 8h.01" />
-    </>
-  ),
+const ICON_MAP = {
+  satellite: Satellite,
+  image: ImageIcon,
+  upload: Upload,
+  folder: FolderOpen,
+  chat: MessageSquare,
+  spark: Sparkles,
+  check: CheckCircle2,
+  alert: CircleAlert,
+  file: FileDown,
+  clock: Clock,
+  globe: Globe,
+  send: ArrowUp,
+  expand: Maximize2,
+  x: X,
+  layers: Layers,
+  cpu: Cpu,
+  sun: Sun,
+  moon: Moon,
+  plus: Plus,
+  info: Info,
+  benchmark: ChartNoAxesCombined,
+  loader: LoaderCircle,
 };
 
-function RuneIcon({ name, size = 16 }) {
-  return (
-    <svg
-      className="ri"
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.7"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      {ICON_PATHS[name] || ICON_PATHS.spark}
-    </svg>
-  );
+function DynamicIcon({ name, size = 16, strokeWidth = 1.8, className = '', ...props }) {
+  const Comp = ICON_MAP[name] || Sparkles;
+  return <Comp size={size} strokeWidth={strokeWidth} className={`sq-icon ${className}`} {...props} />;
 }
 
-// Full-screen zoom viewer: scroll to zoom, drag to pan, Esc / backdrop to close.
+/* ---------- Lottie Looping Animation Component ---------- */
+function LottieAnimation({ path = '/animation/lootie-loop.json', className = 'lottie-container', speed = 1.5 }) {
+  const containerRef = useRef(null);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const anim = lottie.loadAnimation({
+      container: containerRef.current,
+      renderer: 'svg',
+      loop: true,
+      autoplay: true,
+      path: path,
+      rendererSettings: {
+        preserveAspectRatio: 'xMaxYMid meet',
+        clearCanvas: false,
+      },
+    });
+
+    anim.setSpeed(speed);
+
+    return () => {
+      anim.destroy();
+    };
+  }, [path, speed]);
+
+  return <div ref={containerRef} className={className} aria-hidden="true" />;
+}
+
+/* ---------- High-Performance Modern GIS Image Inspector Lightbox ---------- */
 function ImageViewer({ src, label, onClose }) {
   const [scale, setScale] = useState(1);
   const [pos, setPos] = useState({ x: 0, y: 0 });
-  const drag = useRef(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStart = useRef({ x: 0, y: 0, posX: 0, posY: 0 });
+
+  // Keyboard navigation
   useEffect(() => {
-    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    const onKey = (e) => {
+      if (e.key === 'Escape') onClose();
+      else if (e.key === '+' || e.key === '=') zoomBy(1.25);
+      else if (e.key === '-') zoomBy(0.8);
+      else if (e.key === '0' || e.key === 'r' || e.key === 'R') reset();
+    };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
-  const zoomBy = (f) => setScale((s) => Math.min(8, Math.max(1, +(s * f).toFixed(3))));
-  const onDown = (e) => { if (scale > 1) drag.current = { x: e.clientX - pos.x, y: e.clientY - pos.y }; };
-  const onMove = (e) => { if (drag.current) setPos({ x: e.clientX - drag.current.x, y: e.clientY - drag.current.y }); };
-  const onUp = () => { drag.current = null; };
-  const reset = () => { setScale(1); setPos({ x: 0, y: 0 }); };
+
+  const zoomBy = (factor) => {
+    setScale((prev) => {
+      const next = Math.min(8, Math.max(0.5, +(prev * factor).toFixed(2)));
+      if (next <= 1) setPos({ x: 0, y: 0 });
+      return next;
+    });
+  };
+
+  const reset = () => {
+    setScale(1);
+    setPos({ x: 0, y: 0 });
+  };
+
+  const toggleZoom = (e) => {
+    e.stopPropagation();
+    if (scale !== 1) {
+      reset();
+    } else {
+      setScale(2.5);
+    }
+  };
+
+  const handlePointerDown = (e) => {
+    if (e.button !== 0) return;
+    setIsDragging(true);
+    dragStart.current = {
+      x: e.clientX,
+      y: e.clientY,
+      posX: pos.x,
+      posY: pos.y,
+    };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+
+  const handlePointerMove = (e) => {
+    if (!isDragging) return;
+    const dx = e.clientX - dragStart.current.x;
+    const dy = e.clientY - dragStart.current.y;
+    setPos({
+      x: dragStart.current.posX + dx,
+      y: dragStart.current.posY + dy,
+    });
+  };
+
+  const handlePointerUp = (e) => {
+    setIsDragging(false);
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleWheel = (e) => {
+    e.preventDefault();
+    const factor = e.deltaY > 0 ? 0.88 : 1.14;
+    zoomBy(factor);
+  };
+
   return (
-    <div className="viewer-overlay" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="viewer-toolbar" onMouseDown={(e) => e.stopPropagation()}>
-        <RuneIcon name="expand" size={15} />
-        <span className="viewer-name">{label}</span>
-        <span className="viewer-spacer" />
-        <button type="button" className="k-btn k-btn-ghost k-btn-xs" onClick={() => zoomBy(1.25)} aria-label="Zoom in">+</button>
-        <span className="viewer-pct">{Math.round(scale * 100)}%</span>
-        <button type="button" className="k-btn k-btn-ghost k-btn-xs" onClick={() => zoomBy(0.8)} aria-label="Zoom out">−</button>
-        <button type="button" className="k-btn k-btn-ghost k-btn-xs" onClick={reset}>Reset</button>
-        <button type="button" className="k-btn k-btn-ghost k-btn-xs viewer-close" onClick={onClose}><RuneIcon name="x" size={13} /> Close</button>
-      </div>
-      <div className="viewer-stage" onWheel={(e) => zoomBy(e.deltaY > 0 ? 0.9 : 1.1)}
-        onMouseDown={onDown} onMouseMove={onMove} onMouseUp={onUp} onMouseLeave={onUp}>
-        <img src={src} alt={label || ''} draggable="false"
-          style={{ transform: `translate(${pos.x}px, ${pos.y}px) scale(${scale})`, cursor: scale > 1 ? 'grab' : 'default' }} />
-      </div>
-      <div className="viewer-hint">Scroll to zoom · drag to pan · Esc to close</div>
+    <div
+      className="gis-viewer-backdrop"
+      role="dialog"
+      aria-modal="true"
+      aria-label={label || 'Image Viewer'}
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      {/* Top Floating GIS Inspector Dock */}
+      <header className="gis-viewer-header" onMouseDown={(e) => e.stopPropagation()}>
+        <div className="gis-viewer-meta">
+          <Satellite size={16} strokeWidth={1.8} className="gis-viewer-icon" />
+          <span className="gis-viewer-title" title={label}>{label || 'Satellite Imagery'}</span>
+        </div>
+
+        <div className="gis-viewer-controls">
+          <button
+            type="button"
+            className="gis-btn"
+            onClick={() => zoomBy(0.8)}
+            title="Zoom out (-)"
+            aria-label="Zoom out"
+          >
+            <ZoomOut size={16} strokeWidth={1.8} />
+          </button>
+          <button
+            type="button"
+            className="gis-btn gis-pct-btn"
+            onClick={reset}
+            title="Click to reset to 100%"
+          >
+            {Math.round(scale * 100)}%
+          </button>
+          <button
+            type="button"
+            className="gis-btn"
+            onClick={() => zoomBy(1.25)}
+            title="Zoom in (+)"
+            aria-label="Zoom in"
+          >
+            <ZoomIn size={16} strokeWidth={1.8} />
+          </button>
+          <button
+            type="button"
+            className="gis-btn"
+            onClick={reset}
+            title="Reset position and zoom (0)"
+          >
+            <RotateCcw size={15} strokeWidth={1.8} />
+            <span>Reset</span>
+          </button>
+          <div className="gis-divider" />
+          <button
+            type="button"
+            className="gis-btn gis-close-btn"
+            onClick={onClose}
+            title="Close viewer (Esc)"
+            aria-label="Close viewer"
+          >
+            <X size={17} strokeWidth={2} />
+          </button>
+        </div>
+      </header>
+
+      {/* Main Canvas Viewport */}
+      <main
+        className="gis-viewer-stage"
+        onWheel={handleWheel}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
+        onDoubleClick={toggleZoom}
+        style={{ cursor: isDragging ? 'grabbing' : scale > 1 ? 'grab' : 'zoom-in' }}
+      >
+        <div
+          className="gis-viewer-content"
+          style={{
+            transform: `translate(${pos.x}px, ${pos.y}px) scale(${scale})`,
+            transition: isDragging ? 'none' : 'transform 120ms cubic-bezier(0.2, 0.9, 0.3, 1)',
+          }}
+        >
+          <img
+            src={src}
+            alt={label || 'Expanded satellite view'}
+            draggable={false}
+            className="gis-viewer-img"
+          />
+        </div>
+      </main>
+
+      {/* Bottom Floating Keyboard / Navigation Guide */}
+      <footer className="gis-viewer-hud">
+        <span>Scroll / pinch to zoom</span>
+        <span className="hud-dot">·</span>
+        <span>Drag to pan</span>
+        <span className="hud-dot">·</span>
+        <span>Double-click to toggle {scale === 1 ? '2.5×' : '1×'}</span>
+        <span className="hud-dot">·</span>
+        <kbd>Esc</kbd> <span>to close</span>
+      </footer>
     </div>
   );
 }
 
 function ZoomImage({ src, caption, evidence, onExpand }) {
   return (
-    <div className={`img-wrap${evidence ? ' evidence' : ''}`}>
+    <div
+      className={`img-wrap${evidence ? ' evidence' : ''}${onExpand ? ' is-inspectable' : ''}`}
+      onClick={() => onExpand?.({ src, label: caption })}
+      role={onExpand ? 'button' : undefined}
+      tabIndex={onExpand ? 0 : undefined}
+      onKeyDown={(e) => {
+        if (onExpand && (e.key === 'Enter' || e.key === ' ')) {
+          e.preventDefault();
+          onExpand({ src, label: caption });
+        }
+      }}
+      title={onExpand ? 'Click to inspect and zoom full image' : caption}
+    >
       <img src={src} alt={caption} />
-      <button type="button" className="expand-btn" aria-label="Expand image" onClick={() => onExpand({ src, label: caption })}>
-        <RuneIcon name="expand" size={14} />
-      </button>
+      {onExpand && (
+        <span className="inspect-badge" aria-hidden="true">
+          <Maximize2 size={13} strokeWidth={2} />
+          <span>Inspect</span>
+        </span>
+      )}
     </div>
   );
 }
@@ -292,6 +387,7 @@ function SatQueryLogo({ size = 26 }) {
 /* ---------- Scene Inspector Subcomponents ---------- */
 
 function ProductHeader({ theme, onToggleTheme }) {
+  const isDark = theme === 'dark';
   return (
     <div className="product-identity">
       <div className="product-branding">
@@ -300,12 +396,24 @@ function ProductHeader({ theme, onToggleTheme }) {
       </div>
       <button
         type="button"
-        className="theme-toggle-compact"
+        role="switch"
+        aria-checked={isDark}
+        className={`theme-switch ${isDark ? 'is-dark' : 'is-light'}`}
         onClick={onToggleTheme}
-        title={`Switch to ${theme === 'light' ? 'Dark' : 'Light'} mode`}
-        aria-label={`Switch to ${theme === 'light' ? 'Dark' : 'Light'} mode`}
+        title={`Switch to ${isDark ? 'Light' : 'Dark'} mode`}
+        aria-label={`Switch to ${isDark ? 'Light' : 'Dark'} mode`}
       >
-        <RuneIcon name={theme === 'light' ? 'moon' : 'sun'} size={14} />
+        <div className="theme-switch-track">
+          <span className="theme-switch-icon icon-light" aria-hidden="true">
+            <Sun size={13} strokeWidth={2.4} />
+          </span>
+          <span className="theme-switch-icon icon-dark" aria-hidden="true">
+            <Moon size={13} strokeWidth={2.4} />
+          </span>
+          <span className="theme-switch-thumb" aria-hidden="true">
+            {isDark ? <Moon size={12} strokeWidth={2.2} /> : <Sun size={12} strokeWidth={2.2} />}
+          </span>
+        </div>
       </button>
     </div>
   );
@@ -329,10 +437,10 @@ function SceneHeader({ count = 0, max = 2 }) {
 function SceneDropCard({ onUpload }) {
   return (
     <label htmlFor="scene-upload" className="drop-card">
-      <span className="drop-icon"><RuneIcon name="upload" size={22} /></span>
+      <span className="drop-icon"><UploadCloud size={24} strokeWidth={1.8} /></span>
       <strong>Add a satellite image</strong>
       <small>One image, or two for change / optical–SAR.<br />GeoTIFF · TIFF · PNG · JPEG</small>
-      <span className="drop-cta"><RuneIcon name="image" size={13} /> Browse files</span>
+      <span className="drop-cta"><FolderOpen size={16} strokeWidth={1.8} /> Browse files</span>
     </label>
   );
 }
@@ -388,7 +496,7 @@ function ScenePreview({ files, previews, activeIndex, onSelectIndex, dimensions,
           onClick={onReplace}
           title="Replace the current image"
         >
-          <RuneIcon name="upload" size={13} /> Replace image
+          <Upload size={16} strokeWidth={1.8} /> Replace image
         </button>
         {files.length < 2 && (
           <button
@@ -397,7 +505,7 @@ function ScenePreview({ files, previews, activeIndex, onSelectIndex, dimensions,
             onClick={onAdd}
             title="Add second scene for bi-temporal change / optical-SAR fusion"
           >
-            <RuneIcon name="plus" size={13} /> + Add scene
+            <Plus size={16} strokeWidth={1.8} /> Add scene
           </button>
         )}
         {files.length > 1 && (
@@ -407,7 +515,7 @@ function ScenePreview({ files, previews, activeIndex, onSelectIndex, dimensions,
             onClick={() => onRemove(activeIndex)}
             title={`Remove ${activeIndex === 0 ? 'T1' : 'T2'}`}
           >
-            <RuneIcon name="x" size={12} /> Remove
+            <X size={16} strokeWidth={1.8} /> Remove
           </button>
         )}
       </div>
@@ -423,7 +531,7 @@ function SceneMetadata({ file, index, dimensions }) {
   return (
     <div className="scene-section scene-meta-section">
       <div className="sec-title">
-        <span>✦ SCENE INFORMATION</span>
+        <span className="sec-title-label">✦ SCENE INFORMATION</span>
         <span className="sec-meta">{index === 0 ? 'T1 (Baseline)' : 'T2 (Comparison)'}</span>
       </div>
       <div className="meta-table">
@@ -464,6 +572,23 @@ function SceneMetadata({ file, index, dimensions }) {
   );
 }
 
+function getModelIcon(name) {
+  switch (name) {
+    case 'geochat':
+      return <Globe size={18} strokeWidth={1.8} className="model-row-icon" />;
+    case 'change':
+      return <GitCompareArrows size={18} strokeWidth={1.8} className="model-row-icon" />;
+    case 'optical_sar':
+      return <Layers size={18} strokeWidth={1.8} className="model-row-icon" />;
+    case 'disaster':
+      return <ShieldAlert size={18} strokeWidth={1.8} className="model-row-icon" />;
+    case 'landcover':
+      return <Earth size={18} strokeWidth={1.8} className="model-row-icon" />;
+    default:
+      return <Bot size={18} strokeWidth={1.8} className="model-row-icon" />;
+  }
+}
+
 function ModelStatus({ registry = [] }) {
   const models = registry.length
     ? registry
@@ -471,9 +596,9 @@ function ModelStatus({ registry = [] }) {
 
   const formatName = (name) => {
     if (name === 'geochat') return 'GeoChat';
-    if (name === 'change') return 'Change';
+    if (name === 'change') return 'Change detection';
     if (name === 'optical_sar') return 'Optical-SAR';
-    if (name === 'disaster') return 'Disaster';
+    if (name === 'disaster') return 'Disaster detection';
     if (name === 'landcover') return 'Land-cover';
     return name;
   };
@@ -481,17 +606,20 @@ function ModelStatus({ registry = [] }) {
   return (
     <div className="scene-section scene-models-section">
       <div className="sec-title">
-        <span>✦ AI MODELS</span>
+        <span className="sec-title-label">✦ AI MODELS</span>
         <span className="sec-meta">{models.length} online</span>
       </div>
       <div className="model-status-list">
         {models.map((m) => (
           <div key={m.name} className="model-status-item">
             <span className="model-name">
-              <i className="status-dot online" />
-              {formatName(m.name)}
+              {getModelIcon(m.name)}
+              <span>{formatName(m.name)}</span>
             </span>
-            <span className="model-state">Online</span>
+            <span className="model-status-pill online">
+              <i className="status-dot online" />
+              Online
+            </span>
           </div>
         ))}
       </div>
@@ -506,7 +634,10 @@ function BenchmarkPanel({ data }) {
   return (
     <div className="scene-section bench-section">
       <div className="sec-title bench-head" onClick={() => setOpen((o) => !o)}>
-        <span>✦ BENCHMARKS</span>
+        <span className="sec-title-label">
+          <ChartNoAxesCombined size={14} strokeWidth={1.8} />
+          BENCHMARKS
+        </span>
         <span className="sec-meta">{open ? 'hide' : 'show'}</span>
       </div>
       {open && (
@@ -526,7 +657,7 @@ function BenchmarkPanel({ data }) {
 function SceneInspectorFooter() {
   return (
     <div className="scene-inspector-footer">
-      <RuneIcon name="clock" size={12} />
+      <Clock size={14} strokeWidth={1.8} />
       <span>Background follows IST · day / night imagery crossfades automatically</span>
     </div>
   );
@@ -536,7 +667,7 @@ function SceneInspectorFooter() {
 function KBadge({ tone = 'neutral', dot = false, icon, children }) {
   return (
     <span className={`k-badge k-badge-${tone}${dot ? ' is-dot' : ''}`}>
-      {dot ? <i className="k-dot" /> : icon ? <RuneIcon name={icon} size={12} /> : null}
+      {dot ? <i className="k-dot" /> : icon ? <DynamicIcon name={icon} size={12} strokeWidth={1.8} /> : null}
       {children}
     </span>
   );
@@ -551,15 +682,15 @@ function ThinkingTrace({ trace, tools, task, elapsed }) {
   return (
     <details className="think" open={false}>
       <summary className="think-summary">
-        <span className="think-done-ic"><RuneIcon name="check" size={12} /></span>
+        <span className="think-done-ic"><Check size={14} strokeWidth={1.8} /></span>
         <span className="think-label">Thought · {taskLabels[task] || task || 'analysis'}</span>
         <span className="think-count">{trace?.length || 0} steps{elapsed != null && ` · ${elapsed.toFixed(1)}s`}</span>
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="chev" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+        <ChevronDown size={14} strokeWidth={1.8} className="chev" aria-hidden="true" />
       </summary>
       <ol className="task-rows">
         {(trace || []).map((s, k) => (
           <li key={k} className="task-row">
-            <span className="task-ic"><RuneIcon name="check" size={13} /></span>
+            <span className="task-ic"><Check size={14} strokeWidth={1.8} /></span>
             <div><strong>{stageLabel(s.stage)}</strong><span>{s.detail}</span></div>
           </li>
         ))}
@@ -567,7 +698,7 @@ function ThinkingTrace({ trace, tools, task, elapsed }) {
       {tools?.length > 0 && (
         <div className="tool-chips" aria-label="Models used">
           {tools.map((t) => (
-            <span key={t} className="tool-chip"><RuneIcon name="cpu" size={12} />{t}</span>
+            <span key={t} className="tool-chip"><Cpu size={14} strokeWidth={1.8} />{t}</span>
           ))}
         </div>
       )}
@@ -610,7 +741,7 @@ function LiveThinking({ pending, defaultOpen = false }) {
         <span className="shimmer" role="status">{running ? running.label : pending.answer != null ? 'Answering' : 'Thinking'}</span>
         {pending.steps.length > 0 && <span className="live-count">{doneCount}/{pending.steps.length}</span>}
         <span className="elapsed">{secs}s</span>
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className={open ? 'chev open' : 'chev'} aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+        <ChevronDown size={14} strokeWidth={1.8} className={open ? 'chev open' : 'chev'} aria-hidden="true" />
       </button>
       <div className={`live-grid${open ? ' is-open' : ''}`}>
         <div className="live-overflow">
@@ -623,7 +754,7 @@ function LiveThinking({ pending, defaultOpen = false }) {
                   <span className="live-rail" aria-hidden="true" />
                   <span className="live-ic">
                     {s.status === 'done'
-                      ? <RuneIcon name="check" size={12} />
+                      ? <Check size={14} strokeWidth={1.8} />
                       : <span className="ring" aria-hidden="true" />}
                   </span>
                   <div className="live-body">
@@ -670,7 +801,7 @@ function ConfBreakdown({ breakdown }) {
   return (
     <div className="bot-conf conf-breakdown">
       <div className="conf-top">
-        <span className="conf-word"><RuneIcon name={o >= 60 ? 'check' : 'alert'} size={12} />{confidenceWord(o)} · {o}%</span>
+        <span className="conf-word">{o >= 60 ? <CheckCircle2 size={16} strokeWidth={1.8} className="conf-icon hi" /> : <CircleAlert size={16} strokeWidth={1.8} className="conf-icon lo" />}{confidenceWord(o)} · {o}%</span>
         <span className="conf-cal" title="Not yet calibrated against ground-truth correctness">{breakdown.calibration_state}</span>
       </div>
       {dims.map(([name, v]) => { const p = pct(v); return (
@@ -729,7 +860,7 @@ function BotBubble({ thinking, text, streaming, streamDone, evidence, confidence
       {breakdown ? <ConfBreakdown breakdown={breakdown} /> : (confidence != null && (() => { const pct = Math.round(Number(confidence) * 100); return (
         <div className="bot-conf">
           <div className="conf-top">
-            <span className="conf-word"><RuneIcon name={pct >= 60 ? 'check' : 'alert'} size={12} />{confidenceWord(pct)} · {pct}%</span>
+            <span className="conf-word">{pct >= 60 ? <CheckCircle2 size={16} strokeWidth={1.8} className="conf-icon hi" /> : <CircleAlert size={16} strokeWidth={1.8} className="conf-icon lo" />}{confidenceWord(pct)} · {pct}%</span>
             {task && <KBadge tone="info">{taskLabels[task] || task}</KBadge>}
           </div>
           <div className="k-meter sm"><span className={pct >= 80 ? 'hi' : pct >= 60 ? 'mid' : 'lo'} style={{ width: `${pct}%` }} /></div>
@@ -740,7 +871,7 @@ function BotBubble({ thinking, text, streaming, streamDone, evidence, confidence
       )}
       {reportId && (
         <button type="button" className="k-btn k-btn-outline k-btn-sm report-btn" onClick={() => onReport(reportId)}>
-          <RuneIcon name="file" size={13} /> Full report · PDF / HTML
+          <FileDown size={16} strokeWidth={1.8} /> Full report · PDF / HTML
         </button>
       )}
     </div>
@@ -1127,7 +1258,7 @@ function App() {
                 onClick={() => openReport(lastReportId)}
                 title="Open full report in a new tab"
               >
-                <RuneIcon name="file" size={13} />
+                <FileDown size={16} strokeWidth={1.8} />
                 <span>Export report</span>
               </button>
             )}
@@ -1135,21 +1266,14 @@ function App() {
 
           <div className="chat-thread" ref={threadRef}>
             {!hasScene && (
-              <div className="empty-state">
-                <span className="empty-icon"><RuneIcon name="satellite" size={26} /></span>
-                <strong>Start with a scene</strong>
-                <p>Add a satellite image on the left. Follow-ups stay in the same conversation, with evidence overlays attached to every answer.</p>
-                <div className="empty-steps">
-                  <span><i>1</i> Upload GeoTIFF / PNG</span>
-                  <span><i>2</i> Ask in plain language</span>
-                  <span><i>3</i> Export the PDF report</span>
-                </div>
+              <div className="empty-state empty-state-lottie">
+                <LottieAnimation path="/animation/lootie-loop.json" />
               </div>
             )}
             {hasScene && messages.length === 0 && !loading && (
               <div className="thread-hint">
-                <RuneIcon name="chat" size={14} />
-                Scene locked in. Ask below — or tap a suggestion to start.
+                <MessageSquare size={16} strokeWidth={1.8} />
+                Ask your query below or tap a suggestion to start
               </div>
             )}
             {messages.map((m, i) => m.role === 'user' ? (
@@ -1190,7 +1314,7 @@ function App() {
               <div className="suggest-row">
                 {suggestLoading && !suggestions.length
                   ? <span className="suggest-loading">Reading the scene…</span>
-                  : suggestions.map((q) => <button key={q} type="button" className="suggest-chip" onClick={() => ask(q)} disabled={loading}><RuneIcon name="spark" size={12} />{q}</button>)}
+                  : suggestions.map((q) => <button key={q} type="button" className="suggest-chip" onClick={() => ask(q)} disabled={loading}><Sparkles size={14} strokeWidth={1.8} />{q}</button>)}
               </div>
             </div>
           )}
@@ -1198,7 +1322,7 @@ function App() {
           {/* Prompt bar — beautifului prompt-bar language, kumo input shape */}
           <div className="promptbar">
             <span className="prompt-ctx" title="Scene attached">
-              <RuneIcon name="image" size={12} />{hasScene ? `${files.length} scene${files.length > 1 ? 's' : ''}` : 'no scene'}
+              <ImageIcon size={14} strokeWidth={1.8} />{hasScene ? `${files.length} scene${files.length > 1 ? 's' : ''}` : 'no scene'}
             </span>
             <input
               type="text" value={input}
@@ -1208,16 +1332,29 @@ function App() {
               onKeyDown={(e) => { if (e.key === 'Enter') ask(); }}
               aria-label="Ask about the scene"
             />
-            <span className="prompt-model" title="Active models"><RuneIcon name="cpu" size={12} />{registry.length || 3}</span>
-            <button type="button" className="k-btn k-btn-primary send" onClick={() => ask()} disabled={loading || !hasScene || !input.trim()} aria-label="Send">
-              {loading ? '…' : <><RuneIcon name="send" size={14} /><span>Ask</span></>}
+            <span className="prompt-model" title="Active models"><Cpu size={14} strokeWidth={1.8} />{registry.length || 3}</span>
+            <button
+              type="button"
+              className="k-btn k-btn-primary send"
+              onClick={() => ask()}
+              disabled={loading || !hasScene || !input.trim()}
+              aria-label="Send message"
+            >
+              {loading ? (
+                <LoaderCircle size={16} strokeWidth={1.8} className="sq-spin" />
+              ) : (
+                <>
+                  <ArrowUp size={16} strokeWidth={2.2} />
+                  <span>Ask</span>
+                </>
+              )}
             </button>
           </div>
         </section>
       </main>
 
       <footer className="mission-foot">
-        <span><RuneIcon name="satellite" size={12} /> SatQuery AI · Agentic vision–language assistant</span>
+        <span><Satellite size={14} strokeWidth={1.8} /> SatQuery AI · Agentic vision–language assistant</span>
         <span>ISRO / SAC · PS-26167 · Prototype</span>
       </footer>
 
