@@ -293,13 +293,8 @@ function ProductHeader({ theme, onToggleTheme }) {
   return (
     <div className="product-identity">
       <div className="product-branding">
-        <div className="product-logo-tile">
-          <SatQueryLogo size={24} />
-        </div>
-        <div className="product-titles">
-          <h1 className="product-name">✦ SatQuery AI</h1>
-          <p className="product-tagline">Vision–language assistant for remote sensing</p>
-        </div>
+        <img src="/logo/logo.png" alt="SatqueryAI" className="product-logo-img" />
+        <h1 className="product-name">SatqueryAI</h1>
       </div>
       <button
         type="button"
@@ -979,35 +974,37 @@ function App() {
             onToggleTheme={() => setTheme((t) => (t === 'light' ? 'dark' : 'light'))}
           />
 
-          <SceneHeader count={files.length} max={2} />
+          <div className="scene-scroll-body">
+            <SceneHeader count={files.length} max={2} />
 
-          {!hasScene ? (
-            <SceneDropCard onUpload={() => fileInputRef.current?.click()} />
-          ) : (
-            <>
-              <ScenePreview
-                files={files}
-                previews={previews}
-                activeIndex={activeSceneIndex}
-                onSelectIndex={setActiveSceneIndex}
-                dimensions={dimensions}
-                onExpand={setViewer}
-                onReplace={() => fileInputRef.current?.click()}
-                onAdd={() => addSceneInputRef.current?.click()}
-                onRemove={removeScene}
-              />
+            {!hasScene ? (
+              <SceneDropCard onUpload={() => fileInputRef.current?.click()} />
+            ) : (
+              <>
+                <ScenePreview
+                  files={files}
+                  previews={previews}
+                  activeIndex={activeSceneIndex}
+                  onSelectIndex={setActiveSceneIndex}
+                  dimensions={dimensions}
+                  onExpand={setViewer}
+                  onReplace={() => fileInputRef.current?.click()}
+                  onAdd={() => addSceneInputRef.current?.click()}
+                  onRemove={removeScene}
+                />
 
-              <SceneMetadata
-                file={files[activeSceneIndex] || files[0]}
-                index={activeSceneIndex}
-                dimensions={dimensions}
-              />
-            </>
-          )}
+                <SceneMetadata
+                  file={files[activeSceneIndex] || files[0]}
+                  index={activeSceneIndex}
+                  dimensions={dimensions}
+                />
+              </>
+            )}
 
-          <ModelStatus registry={registry} />
+            <ModelStatus registry={registry} />
 
-          <SceneInspectorFooter />
+            <SceneInspectorFooter />
+          </div>
         </section>
 
         {/* RIGHT: AI Assistant / Conversational Workspace */}
