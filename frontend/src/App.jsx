@@ -44,6 +44,12 @@ import {
 } from 'lucide-react';
 import IndiaBackground from './IndiaBackground';
 
+/* Backend base URL. Empty in local dev (Vite proxy forwards /api → :8010);
+ * in production set VITE_API_BASE to the deployed backend origin (e.g. the
+ * ngrok/Cloudflare tunnel or HF Space URL) so the static frontend can reach it. */
+const API_BASE = (import.meta.env.VITE_API_BASE || '').replace(/\/$/, '');
+const api = (path) => `${API_BASE}${path}`;
+
 /* ------------------------------------------------------------------
  * SatQuery AI — revamped workspace
  * Design read: mission-control AI workspace for technical analysts,
@@ -1028,7 +1034,7 @@ function App() {
 
   useEffect(() => { loadHealth(); loadRegistry(); loadBenchmark(); }, []);
   async function loadBenchmark() {
-    try { setBenchmark(await (await fetch('/api/benchmark')).json()); } catch { /* ignore */ }
+    try { setBenchmark(await (await fetch(api('/api/benchmark'))).json()); } catch { /* ignore */ }
   }
   useEffect(() => { threadRef.current?.scrollTo({ top: threadRef.current.scrollHeight, behavior: 'smooth' }); }, [messages, loading]);
   const pinBottom = () => { const el = threadRef.current; if (el) el.scrollTop = el.scrollHeight; };
@@ -1083,13 +1089,13 @@ function App() {
 
   async function loadHealth() {
     try {
-      const d = await (await fetch('/api/health')).json();
+      const d = await (await fetch(api('/api/health'))).json();
       setLive(!d.mock_mode);
       setStatus(d.mock_mode ? 'Demo mode' : 'Live models connected');
     } catch { setLive(false); setStatus('Backend offline'); }
   }
   async function loadRegistry() {
-    try { const d = await (await fetch('/api/registry')).json(); setRegistry(d.tools || []); }
+    try { const d = await (await fetch(api('/api/registry'))).json(); setRegistry(d.tools || []); }
     catch { setRegistry([]); }
   }
 
@@ -1114,7 +1120,7 @@ function App() {
     const fd = new FormData();
     picked.forEach((f) => fd.append('images', f));
     try {
-      const s = await (await fetch('/api/session', { method: 'POST', body: fd })).json();
+      const s = await (await fetch(api('/api/session'), { method: 'POST', body: fd })).json();
       setSessionId(s.session_id);
       fetchSuggestions(s.session_id);
     } catch (err) { alert(`Could not load the image: ${err}`); }
@@ -1139,7 +1145,7 @@ function App() {
   async function fetchSuggestions(sid) {
     setSuggestLoading(true);
     try {
-      const d = await (await fetch('/api/suggest', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ session_id: sid }) })).json();
+      const d = await (await fetch(api('/api/suggest'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ session_id: sid }) })).json();
       setSuggestions(d.suggestions || []);
     } catch { setSuggestions([]); }
     finally { setSuggestLoading(false); }
@@ -1156,7 +1162,7 @@ function App() {
    * are unaffected (the pump only waits when it is behind). */
   const STEP_PACE = 500;
   async function streamChat(sid, text, patch, t0) {
-    const r = await fetch('/api/chat/stream', {
+    const r = await fetch(api('/api/chat/stream'), {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ session_id: sid, message: text }),
     });
@@ -1311,7 +1317,7 @@ function App() {
         // same choreography — populate the rail from the real trace, then
         // stream the answer text.
         try {
-          const r = await fetch('/api/chat', {
+          const r = await fetch(api('/api/chat'), {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ session_id: sid, message: text }),
           });
@@ -1356,12 +1362,12 @@ function App() {
     if (fileInputRef.current) fileInputRef.current.value = '';
     setTimeout(() => fileInputRef.current?.click(), 0);
   }
-  const openReport = (id) => window.open(`/api/report/${id}`, '_blank', 'noopener,noreferrer');
+  const openReport = (id) => window.open(api(`/api/report/${id}`), '_blank', 'noopener,noreferrer');
   const downloadReport = (id) => {
     // /api/report/{id}/pdf serves the PDF with a download disposition, so a
     // programmatic anchor click saves the file without navigating away.
     const a = document.createElement('a');
-    a.href = `/api/report/${id}/pdf`;
+    a.href = api(`/api/report/${id}/pdf`);
     a.rel = 'noopener';
     document.body.appendChild(a);
     a.click();
