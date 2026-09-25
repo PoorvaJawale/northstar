@@ -48,3 +48,7 @@ Thumbs.db
 satquery.db
 satquery.db-shm
 satquery.db-wal
+ngrok.exe
+ngrok.zip
+scratch_backend.log
+scratch_vite.log
