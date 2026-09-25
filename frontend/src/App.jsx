@@ -550,26 +550,6 @@ function SceneMetadata({ file, index, dimensions }) {
           <span className="meta-label">File size</span>
           <span className="meta-value">{size}</span>
         </div>
-        <div className="meta-row">
-          <span className="meta-label">Sensor</span>
-          <span className="meta-value is-muted">Not available</span>
-        </div>
-        <div className="meta-row">
-          <span className="meta-label">Location</span>
-          <span className="meta-value is-muted">Not available</span>
-        </div>
-        <div className="meta-row">
-          <span className="meta-label">Acquisition</span>
-          <span className="meta-value is-muted">Not available</span>
-        </div>
-        <div className="meta-row">
-          <span className="meta-label">Resolution</span>
-          <span className="meta-value is-muted">Not available</span>
-        </div>
-        <div className="meta-row">
-          <span className="meta-label">Bands</span>
-          <span className="meta-value is-muted">Not available</span>
-        </div>
       </div>
     </div>
   );
@@ -646,11 +626,15 @@ function BenchmarkPanel({ data }) {
       {open && (
         <div className="bench-body">
           <div className="bench-ft">Fine-tune <b>{ft.train_samples_before}→{ft.train_samples_after}</b> samples · loss <b>{ft.loss_start}→{ft.loss_end}</b>
-            <div className="bench-acc">{ft.accuracy_after != null ? `accuracy ${ft.accuracy_before}→${ft.accuracy_after}` : 'accuracy: pending eval'}</div></div>
-          <table className="bench-table"><tbody>
-            {(data.models || []).map((r, i) => (
-              <tr key={i}><td>{r.task}</td><td className="bm">{r.model}</td><td className="bn">{r.value != null ? r.value : '—'}</td></tr>))}
-          </tbody></table>
+            {ft.accuracy_after != null && (
+              <div className="bench-acc">accuracy {ft.accuracy_before}→{ft.accuracy_after}</div>
+            )}</div>
+          {(data.models || []).some((r) => r.value != null) && (
+            <table className="bench-table"><tbody>
+              {(data.models || []).filter((r) => r.value != null).map((r, i) => (
+                <tr key={i}><td>{r.task}</td><td className="bm">{r.model}</td><td className="bn">{r.value}</td></tr>))}
+            </tbody></table>
+          )}
         </div>
       )}
     </div>
@@ -844,7 +828,7 @@ function WhyPanel({ m }) {
 /* One bot card shared by the streaming bubble and the committed message —
  * same order (thinking → answer → meta → evidence → confidence → why → report). */
 function BotBubble({ thinking, text, streaming, streamDone, evidence, confidence, breakdown,
-                     alignment, area, question, tools, task, reportId, onReport, onExpand, error, live }) {
+                     alignment, area, question, tools, task, reportId, onReport, onDownload, onExpand, error, live }) {
   return (
     <div className={`bubble${error ? ' error' : ''}${live ? ' live' : ''}`}>
       {thinking}
@@ -873,9 +857,14 @@ function BotBubble({ thinking, text, streaming, streamDone, evidence, confidence
         <WhyPanel m={{ question, task, tools, alignment, area, breakdown, evidence }} />
       )}
       {reportId && (
-        <button type="button" className="report-btn" onClick={() => onReport(reportId)}>
-          <FileDown size={16} strokeWidth={1.8} /> Full report · PDF / HTML
-        </button>
+        <div className="report-actions">
+          <button type="button" className="report-btn" onClick={() => onReport(reportId)}>
+            <FileText size={16} strokeWidth={1.8} /> Full report · PDF / HTML
+          </button>
+          <button type="button" className="report-btn report-btn-download" onClick={() => onDownload(reportId)}>
+            <FileDown size={16} strokeWidth={1.8} /> Download report
+          </button>
+        </div>
       )}
     </div>
   );
@@ -1368,6 +1357,16 @@ function App() {
     setTimeout(() => fileInputRef.current?.click(), 0);
   }
   const openReport = (id) => window.open(`/api/report/${id}`, '_blank', 'noopener,noreferrer');
+  const downloadReport = (id) => {
+    // /api/report/{id}/pdf serves the PDF with a download disposition, so a
+    // programmatic anchor click saves the file without navigating away.
+    const a = document.createElement('a');
+    a.href = `/api/report/${id}/pdf`;
+    a.rel = 'noopener';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  };
 
   const hasScene = files.length > 0;
   const lastReport = [...messages].reverse().find((m) => m.role === 'bot' && m.report_id);
@@ -1433,17 +1432,6 @@ function App() {
               <p className="kicker">✦ AI ASSISTANT</p>
               <h2>Conversation</h2>
             </div>
-            {lastReportId && (
-              <button
-                type="button"
-                className="report-head-btn"
-                onClick={() => openReport(lastReportId)}
-                title="Open full report in a new tab"
-              >
-                <FileDown size={16} strokeWidth={1.8} />
-                <span>Export report</span>
-              </button>
-            )}
           </div>
 
           <div className="chat-thread" ref={threadRef}>
@@ -1472,7 +1460,7 @@ function App() {
                   evidence={m.evidence} confidence={m.confidence} task={m.task}
                   breakdown={m.breakdown} alignment={m.alignment} area={m.area}
                   question={m.question} tools={m.tools}
-                  reportId={m.report_id} onReport={openReport} onExpand={setViewer}
+                  reportId={m.report_id} onReport={openReport} onDownload={downloadReport} onExpand={setViewer}
                 />
               </div>
             ))}
@@ -1484,7 +1472,7 @@ function App() {
                   evidence={pending.evidence} confidence={pending.confidence} task={pending.task}
                   breakdown={pending.breakdown} alignment={pending.alignment} area={pending.area}
                   question={pending.question} tools={pending.tools}
-                  reportId={pending.reportId} onReport={openReport} onExpand={setViewer}
+                  reportId={pending.reportId} onReport={openReport} onDownload={downloadReport} onExpand={setViewer}
                 />
               </div>
             )}

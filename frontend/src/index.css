@@ -1527,6 +1527,26 @@ button { font-family: inherit; cursor: pointer; }
 .theme-dark .report-btn:hover:not(:disabled) svg {
   color: #CBD5E1;
 }
+/* Two report actions side by side: view (neutral) + download PDF (accent) */
+.report-actions { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 8px; }
+.report-actions .report-btn { margin-top: 0; }
+.report-btn-download {
+  color: #ffffff;
+  background: var(--accent, #1d4ed8);
+  border-color: var(--accent, #1d4ed8);
+}
+.report-btn-download svg { color: #ffffff; }
+.report-btn-download:hover:not(:disabled) {
+  background: var(--accent-hover, #1b3fb0);
+  border-color: var(--accent-hover, #1b3fb0);
+  color: #ffffff;
+}
+.report-btn-download:hover:not(:disabled) svg { color: #ffffff; }
+.report-btn-download:active:not(:disabled) { background: var(--accent-hover, #1b3fb0); color: #ffffff; }
+.theme-dark .report-btn-download,
+.theme-dark .report-btn-download:hover:not(:disabled) { color: #ffffff; }
+.theme-dark .report-btn-download svg,
+.theme-dark .report-btn-download:hover:not(:disabled) svg { color: #ffffff; }
 .think { border-bottom: 1px solid var(--line-soft); padding-bottom: 4px; margin-bottom: 8px; }
 .think-summary {
   display: flex; align-items: center; gap: 9px; padding: 7px 8px; margin: 0 -8px;

@@ -30,7 +30,12 @@ VALID_TASKS: list[Task] = [
 # The change/fusion task is listed first so it stays the default when the query
 # is ambiguous, but any single-image intent in the query routes correctly.
 TASKS_BY_INPUT: dict[InputType, list[Task]] = {
-    "single_image": ["disaster_risk", "landcover_area", "single_vqa", "single_caption", "single_grounding"],
+    # allowed[0] is the fallback default when nothing else matches. For a single
+    # image that must be the mandatory VQA baseline — NOT disaster_risk — so an
+    # unmatched question (or Ollama being down) never mislabels a plain query as
+    # a disaster. disaster_risk / landcover_area stay reachable via the LLM and
+    # the deterministic guards below.
+    "single_image": ["single_vqa", "single_caption", "single_grounding", "landcover_area", "disaster_risk"],
     "bitemporal_pair": ["change_vqa", "change_map", "disaster_risk", "landcover_area",
                         "single_vqa", "single_caption", "single_grounding"],
     "optical_sar_pair": ["cross_modal", "disaster_risk", "landcover_area",
@@ -45,17 +50,25 @@ _SYSTEM = (
     "- single_grounding: the user wants a specific object or region LOCATED / MARKED on the "
     "image. Verbs: highlight, mark, locate, outline, circle, pinpoint, point to, show where, "
     "where is/are, find the <object>, box/segment the <object>.\n"
-    "- single_caption: the user wants a general DESCRIPTION of the whole scene "
-    "(describe, summarise, what does this image show).\n"
+    "- single_caption: the user wants a general DESCRIPTION of the scene "
+    "(describe, summarise, what does this image show). Open 'describe ...' "
+    "requests on a single image are caption, INCLUDING 'describe the visible "
+    "damage / the buildings / the land cover' — describing is not locating.\n"
     "- single_vqa: a specific factual QUESTION about the image "
-    "(is there..., how many..., what is the..., yes/no).\n"
+    "(is there..., how many..., what is the..., what type..., yes/no). "
+    "COUNTING and 'what type / which dominates' questions are single_vqa, even "
+    "when they mention vegetation, buildings or land use, and even when the "
+    "question has several parts. These are NOT landcover_area.\n"
     "- change_vqa / change_map: what changed between two dated images.\n"
     "- cross_modal: combine the optical and SAR images.\n"
-    "- disaster_risk: disaster management, flood/cyclone/landslide/wildfire risk, "
-    "prediction, weather impact, rescue or damage assessment.\n"
-    "- landcover_area: MEASURE how big / how much area / what extent a land-cover "
-    "class covers (how big is the cropland/water/vegetation/built-up, area of X, "
-    "how many hectares of X). Use this for size/extent questions, not single_vqa.\n"
+    "- disaster_risk: ONLY explicit disaster management, flood/cyclone/landslide/"
+    "wildfire risk, prediction, weather impact, or rescue. A plain 'describe' or "
+    "factual question is NOT disaster_risk just because it mentions damage.\n"
+    "- landcover_area: choose this ONLY when the user asks for the NUMERIC AREA "
+    "or EXTENT that a land-cover class covers, e.g. 'how big is the cropland', "
+    "'what area of water', 'how many hectares of forest', 'what proportion of the "
+    "scene is built-up'. A question that merely names a class, counts objects, or "
+    "asks what dominates is single_vqa, NOT landcover_area.\n"
     "If the query names an object to point out or mark, prefer single_grounding over "
     "single_caption. Reply with STRICT JSON only: "
     "{\"task\": \"<one of the allowed>\", \"reason\": \"...\"}. "
