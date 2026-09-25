@@ -584,10 +584,13 @@ function getModelIcon(name) {
   }
 }
 
+// Fallback list matches the backend's registry.yaml so a brief empty state
+// (before the registry poll succeeds) is never misleading.
+const KNOWN_TOOLS = [{ name: 'geochat' }, { name: 'change' }, { name: 'optical_sar' },
+  { name: 'disaster' }, { name: 'landcover' }];
+
 function ModelStatus({ registry = [] }) {
-  const models = registry.length
-    ? registry
-    : [{ name: 'geochat' }, { name: 'change' }, { name: 'optical_sar' }];
+  const models = registry.length ? registry : KNOWN_TOOLS;
 
   const formatName = (name) => {
     if (name === 'geochat') return 'GeoChat';
@@ -1038,9 +1041,27 @@ function App() {
     localStorage.setItem('satquery-theme', theme);
   }, [theme]);
 
-  useEffect(() => { loadHealth(); loadRegistry(); loadBenchmark(); }, []);
+  // Self-healing status: health/registry/benchmark can fail at page load if the
+  // backend is momentarily unreachable (e.g. mid-restart, cold tunnel). Poll so
+  // the UI recovers on its own instead of getting stuck on a stale fallback —
+  // registry/benchmark stop refetching once they succeed; health stays live.
+  const registryLoadedRef = useRef(false);
+  const benchLoadedRef = useRef(false);
+  useEffect(() => {
+    const tick = () => {
+      loadHealth();
+      if (!registryLoadedRef.current) loadRegistry();
+      if (!benchLoadedRef.current) loadBenchmark();
+    };
+    tick();
+    const id = window.setInterval(tick, 10000);
+    return () => window.clearInterval(id);
+  }, []);
   async function loadBenchmark() {
-    try { setBenchmark(await (await apiFetch('/api/benchmark')).json()); } catch { /* ignore */ }
+    try {
+      const d = await (await apiFetch('/api/benchmark')).json();
+      setBenchmark(d); benchLoadedRef.current = true;
+    } catch { /* ignore; retried by the poll */ }
   }
   useEffect(() => { threadRef.current?.scrollTo({ top: threadRef.current.scrollHeight, behavior: 'smooth' }); }, [messages, loading]);
   const pinBottom = () => { const el = threadRef.current; if (el) el.scrollTop = el.scrollHeight; };
@@ -1101,8 +1122,10 @@ function App() {
     } catch { setLive(false); setStatus('Backend offline'); }
   }
   async function loadRegistry() {
-    try { const d = await (await apiFetch('/api/registry')).json(); setRegistry(d.tools || []); }
-    catch { setRegistry([]); }
+    try {
+      const d = await (await apiFetch('/api/registry')).json();
+      if (d.tools && d.tools.length) { setRegistry(d.tools); registryLoadedRef.current = true; }
+    } catch { /* keep last known registry; retried by the poll */ }
   }
 
   async function startSession(fileList) {
@@ -1529,7 +1552,7 @@ function App() {
                 onKeyDown={(e) => { if (e.key === 'Enter') ask(); }}
                 aria-label="Ask about the scene"
               />
-              <span className="prompt-model" title="Active models"><Cpu size={14} strokeWidth={1.8} />{registry.length || 3}</span>
+              <span className="prompt-model" title="Active models"><Cpu size={14} strokeWidth={1.8} />{registry.length || 5}</span>
               <button
                 type="button"
                 className="k-btn k-btn-primary send"
