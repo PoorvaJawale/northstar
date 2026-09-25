@@ -34,6 +34,9 @@ import {
   Check,
   Clock,
   ChevronDown,
+  ChevronUp,
+  ChevronLeft,
+  ChevronRight,
   ChartNoAxesCombined,
   LoaderCircle,
   Settings,
@@ -878,6 +881,134 @@ function BotBubble({ thinking, text, streaming, streamDone, evidence, confidence
   );
 }
 
+function SuggestionToolbar({
+  suggestions = [],
+  suggestLoading = false,
+  showSuggestions = true,
+  onToggleSuggestions,
+  onSelectSuggestion,
+  loading = false,
+}) {
+  const scrollRef = useRef(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  const checkScroll = () => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const { scrollLeft, scrollWidth, clientWidth } = el;
+    setCanScrollLeft(scrollLeft > 2);
+    setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 2);
+  };
+
+  useEffect(() => {
+    checkScroll();
+    const el = scrollRef.current;
+    if (!el) return;
+
+    el.addEventListener('scroll', checkScroll, { passive: true });
+    window.addEventListener('resize', checkScroll);
+
+    // Support horizontal wheel/trackpad scrolling
+    const handleWheel = (e) => {
+      if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
+      if (e.deltaY !== 0) {
+        el.scrollLeft += e.deltaY;
+        e.preventDefault();
+      }
+    };
+    el.addEventListener('wheel', handleWheel, { passive: false });
+
+    return () => {
+      el.removeEventListener('scroll', checkScroll);
+      window.removeEventListener('resize', checkScroll);
+      el.removeEventListener('wheel', handleWheel);
+    };
+  }, [suggestions, showSuggestions]);
+
+  const scrollByAmount = (direction) => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const scrollAmount = el.clientWidth * 0.75;
+    el.scrollBy({
+      left: direction === 'left' ? -scrollAmount : scrollAmount,
+      behavior: 'smooth',
+    });
+  };
+
+  return (
+    <div
+      className={`suggest-toolbar ${showSuggestions ? 'is-open' : 'is-collapsed'} ${
+        canScrollLeft ? 'has-scroll-left' : ''
+      } ${canScrollRight ? 'has-scroll-right' : ''}`}
+    >
+      <div className="suggest-toolbar-header">
+        <span className="suggest-toolbar-label">
+          <Sparkles size={12} strokeWidth={2} /> Suggested queries
+        </span>
+        <div className="suggest-toolbar-actions">
+          {showSuggestions && (
+            <div className="suggest-nav-controls">
+              <button
+                type="button"
+                className="suggest-nav-btn"
+                onClick={() => scrollByAmount('left')}
+                disabled={!canScrollLeft}
+                title="Scroll suggestions left"
+                aria-label="Scroll suggestions left"
+              >
+                <ChevronLeft size={14} strokeWidth={2} />
+              </button>
+              <button
+                type="button"
+                className="suggest-nav-btn"
+                onClick={() => scrollByAmount('right')}
+                disabled={!canScrollRight}
+                title="Scroll suggestions right"
+                aria-label="Scroll suggestions right"
+              >
+                <ChevronRight size={14} strokeWidth={2} />
+              </button>
+            </div>
+          )}
+          <button
+            type="button"
+            className="suggest-toggle-btn"
+            onClick={onToggleSuggestions}
+            title={showSuggestions ? 'Hide suggestions' : 'Show suggestions'}
+            aria-label={showSuggestions ? 'Hide suggestions' : 'Show suggestions'}
+          >
+            {showSuggestions ? <ChevronDown size={14} strokeWidth={2} /> : <ChevronUp size={14} strokeWidth={2} />}
+          </button>
+        </div>
+      </div>
+      {showSuggestions && (
+        <div className="suggest-scroll-wrapper">
+          <div className="suggest-scroll-row" ref={scrollRef}>
+            {suggestLoading && !suggestions.length ? (
+              <span className="suggest-loading">Reading scene context…</span>
+            ) : (
+              suggestions.map((q) => (
+                <button
+                  key={q}
+                  type="button"
+                  className="suggest-chip"
+                  onClick={() => onSelectSuggestion(q)}
+                  disabled={loading}
+                  title={q}
+                >
+                  <Sparkles size={13} strokeWidth={1.8} />
+                  <span>{q}</span>
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function App() {
   const fileInputRef = useRef(null);
   const addSceneInputRef = useRef(null);
@@ -890,6 +1021,7 @@ function App() {
   const [sessionId, setSessionId] = useState(null);
   const [suggestions, setSuggestions] = useState([]);
   const [suggestLoading, setSuggestLoading] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(true);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -912,6 +1044,54 @@ function App() {
   useEffect(() => { threadRef.current?.scrollTo({ top: threadRef.current.scrollHeight, behavior: 'smooth' }); }, [messages, loading]);
   const pinBottom = () => { const el = threadRef.current; if (el) el.scrollTop = el.scrollHeight; };
 
+  function generateFollowUps(lastTask, lastAnswer, fileCount) {
+    const text = (lastAnswer || '').toLowerCase();
+    const list = [];
+    const add = (q) => { if (!list.includes(q)) list.push(q); };
+
+    if (lastTask === 'single_caption' || lastTask === 'single_vqa') {
+      if (text.includes('water') || text.includes('river') || text.includes('lake') || text.includes('flood')) {
+        add('Highlight the water body.');
+        add('Predict flood risk and disaster impact from this scene.');
+      }
+      if (text.includes('building') || text.includes('urban') || text.includes('city') || text.includes('settlement')) {
+        add('Highlight the buildings.');
+        add('Is this a rural or an urban area?');
+      }
+      if (text.includes('road') || text.includes('highway') || text.includes('street')) {
+        add('Where are the roads in this image?');
+      }
+      if (text.includes('forest') || text.includes('vegetation') || text.includes('crop') || text.includes('agriculture')) {
+        add('Is there significant vegetation or cropland?');
+      }
+    } else if (lastTask === 'single_grounding') {
+      add('Describe the land cover in and around these highlighted areas.');
+      add('Is this area prone to seasonal flood risk?');
+    } else if (lastTask === 'disaster_risk') {
+      add('Highlight the critical infrastructure and buildings in risk zones.');
+      add('Describe evacuation and accessibility routes visible here.');
+    } else if (lastTask === 'change_vqa' || lastTask === 'change_map' || lastTask === 'cross_modal') {
+      add('What are the primary environmental impacts of these observed changes?');
+      add('Highlight new buildings or cleared land in the recent image.');
+    }
+
+    if (fileCount > 1) {
+      add('What changed between these two images and where?');
+    }
+
+    const fallbacks = [
+      'Describe the land cover and major objects.',
+      'Highlight the water body.',
+      'Highlight the buildings.',
+      'Predict flood risk and disaster impact from this scene.',
+    ];
+    for (const f of fallbacks) {
+      if (list.length >= 4) break;
+      add(f);
+    }
+    return list.slice(0, 4);
+  }
+
   async function loadHealth() {
     try {
       const d = await (await fetch('/api/health')).json();
@@ -931,7 +1111,7 @@ function App() {
     const newPreviews = picked.map((f) => URL.createObjectURL(f));
     setPreviews(newPreviews);
     setActiveSceneIndex(0);
-    setMessages([]); setSuggestions([]); setSessionId(null);
+    setMessages([]); setSuggestions([]); setSessionId(null); setShowSuggestions(true);
 
     // Read dimensions from images
     newPreviews.forEach((src, idx) => {
@@ -1134,6 +1314,7 @@ function App() {
       pinBottom();
       await new Promise((res) => window.setTimeout(res, 650));
       setMessages((m) => [...m, { role: 'bot', ...final }]);
+      setSuggestions(generateFollowUps(final.task, final.text || final.answer, files.length));
     } catch (err) {
       if (!streamed) {
         // SSE unavailable (e.g. backend predates /api/chat/stream — restart
@@ -1171,6 +1352,7 @@ function App() {
           pinBottom();
           await new Promise((res) => window.setTimeout(res, 650));
           setMessages((m) => [...m, fb]);
+          setSuggestions(generateFollowUps(fb.task, fb.text, files.length));
         } catch (err2) {
           setMessages((m) => [...m, { role: 'bot', text: `Request failed: ${err2}`, error: true }]);
         }
@@ -1308,47 +1490,50 @@ function App() {
             )}
           </div>
 
-          {hasScene && (suggestions.length > 0 || suggestLoading) && (
-            <div className="suggest-zone">
-              <span className="suggest-label">Try asking</span>
-              <div className="suggest-row">
-                {suggestLoading && !suggestions.length
-                  ? <span className="suggest-loading">Reading the scene…</span>
-                  : suggestions.map((q) => <button key={q} type="button" className="suggest-chip" onClick={() => ask(q)} disabled={loading}><Sparkles size={14} strokeWidth={1.8} />{q}</button>)}
-              </div>
-            </div>
-          )}
+          {/* Unified Composer Container */}
+          <div className="chat-composer">
+            {hasScene && (suggestions.length > 0 || suggestLoading) && (
+              <SuggestionToolbar
+                suggestions={suggestions}
+                suggestLoading={suggestLoading}
+                showSuggestions={showSuggestions}
+                onToggleSuggestions={() => setShowSuggestions((s) => !s)}
+                onSelectSuggestion={(q) => ask(q)}
+                loading={loading}
+              />
+            )}
 
-          {/* Prompt bar — beautifului prompt-bar language, kumo input shape */}
-          <div className="promptbar">
-            <span className="prompt-ctx" title="Scene attached">
-              <ImageIcon size={14} strokeWidth={1.8} />{hasScene ? `${files.length} scene${files.length > 1 ? 's' : ''}` : 'no scene'}
-            </span>
-            <input
-              type="text" value={input}
-              placeholder={hasScene ? 'Ask about this scene…' : 'Add an image first…'}
-              disabled={!hasScene}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') ask(); }}
-              aria-label="Ask about the scene"
-            />
-            <span className="prompt-model" title="Active models"><Cpu size={14} strokeWidth={1.8} />{registry.length || 3}</span>
-            <button
-              type="button"
-              className="k-btn k-btn-primary send"
-              onClick={() => ask()}
-              disabled={loading || !hasScene || !input.trim()}
-              aria-label="Send message"
-            >
-              {loading ? (
-                <LoaderCircle size={16} strokeWidth={1.8} className="sq-spin" />
-              ) : (
-                <>
-                  <ArrowUp size={16} strokeWidth={2.2} />
-                  <span>Ask</span>
-                </>
-              )}
-            </button>
+            {/* Prompt bar — beautifului prompt-bar language, kumo input shape */}
+            <div className="promptbar">
+              <span className="prompt-ctx" title="Scene attached">
+                <ImageIcon size={14} strokeWidth={1.8} />{hasScene ? `${files.length} scene${files.length > 1 ? 's' : ''}` : 'no scene'}
+              </span>
+              <input
+                type="text" value={input}
+                placeholder={hasScene ? 'Ask about this scene…' : 'Add an image first…'}
+                disabled={!hasScene}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') ask(); }}
+                aria-label="Ask about the scene"
+              />
+              <span className="prompt-model" title="Active models"><Cpu size={14} strokeWidth={1.8} />{registry.length || 3}</span>
+              <button
+                type="button"
+                className="k-btn k-btn-primary send"
+                onClick={() => ask()}
+                disabled={loading || !hasScene || !input.trim()}
+                aria-label="Send message"
+              >
+                {loading ? (
+                  <LoaderCircle size={16} strokeWidth={1.8} className="sq-spin" />
+                ) : (
+                  <>
+                    <ArrowUp size={16} strokeWidth={2.2} />
+                    <span>Ask</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </section>
       </main>
