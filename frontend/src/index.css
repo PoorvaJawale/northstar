@@ -124,7 +124,7 @@ button { font-family: inherit; cursor: pointer; }
   background: #0468a8;
   border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 14px;
-  box-shadow: 0 4px 18px rgba(4, 104, 168, 0.28);
+  box-shadow: none;
 }
 .product-branding {
   display: flex;
@@ -233,7 +233,7 @@ button { font-family: inherit; cursor: pointer; }
 .theme-dark .product-identity {
   background: #0468a8;
   border: 1px solid rgba(255, 255, 255, 0.16);
-  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.08);
+  box-shadow: none;
 }
 .theme-dark .theme-switch {
   background: rgba(0, 0, 0, 0.5);
@@ -1033,15 +1033,30 @@ button { font-family: inherit; cursor: pointer; }
 .drop-cta {
   margin-top: 6px; display: inline-flex; align-items: center; gap: 6px;
   padding: 8px 16px; border-radius: 999px;
-  background: var(--accent-light);
-  border: 1px solid var(--accent-border);
-  color: var(--accent);
+  background: #057bc7;
+  border: 1px solid #0468a8;
+  color: #ffffff;
   font-size: 12.5px; font-weight: 700;
+  box-shadow: 0 2px 8px rgba(5, 123, 199, 0.25);
+  transition: background-color 160ms ease-out, border-color 160ms ease-out;
+}
+.drop-cta svg {
+  color: #ffffff;
+}
+.drop-card:hover .drop-cta {
+  background: #0468a8;
+  border-color: #035386;
 }
 .theme-dark .drop-cta {
-  background: rgba(255,255,255,.09);
-  border-color: var(--line);
-  color: var(--ink);
+  background: #057bc7;
+  border-color: rgba(56, 189, 248, 0.4);
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+.theme-dark .drop-card:hover .drop-cta {
+  background: #0468a8;
+  border-color: rgba(56, 189, 248, 0.6);
+  color: #ffffff;
 }
 
 .file-input { display: none; }
