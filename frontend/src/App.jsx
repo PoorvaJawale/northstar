@@ -873,7 +873,7 @@ function BotBubble({ thinking, text, streaming, streamDone, evidence, confidence
         <WhyPanel m={{ question, task, tools, alignment, area, breakdown, evidence }} />
       )}
       {reportId && (
-        <button type="button" className="k-btn k-btn-outline k-btn-sm report-btn" onClick={() => onReport(reportId)}>
+        <button type="button" className="report-btn" onClick={() => onReport(reportId)}>
           <FileDown size={16} strokeWidth={1.8} /> Full report · PDF / HTML
         </button>
       )}
@@ -1436,7 +1436,7 @@ function App() {
             {lastReportId && (
               <button
                 type="button"
-                className="k-btn k-btn-ghost k-btn-xs report-head-btn"
+                className="report-head-btn"
                 onClick={() => openReport(lastReportId)}
                 title="Open full report in a new tab"
               >
