@@ -49,6 +49,12 @@ import IndiaBackground from './IndiaBackground';
  * ngrok/Cloudflare tunnel or HF Space URL) so the static frontend can reach it. */
 const API_BASE = (import.meta.env.VITE_API_BASE || '').replace(/\/$/, '');
 const api = (path) => `${API_BASE}${path}`;
+// ngrok's free tier serves a browser-warning interstitial (HTML) instead of the
+// real response unless this header is present. Harmless when the backend is
+// local (API_BASE empty). Injected into every API request.
+const API_HEADERS = API_BASE ? { 'ngrok-skip-browser-warning': 'true' } : {};
+const apiFetch = (path, opts = {}) =>
+  fetch(api(path), { ...opts, headers: { ...API_HEADERS, ...(opts.headers || {}) } });
 
 /* ------------------------------------------------------------------
  * SatQuery AI — revamped workspace
@@ -1034,7 +1040,7 @@ function App() {
 
   useEffect(() => { loadHealth(); loadRegistry(); loadBenchmark(); }, []);
   async function loadBenchmark() {
-    try { setBenchmark(await (await fetch(api('/api/benchmark'))).json()); } catch { /* ignore */ }
+    try { setBenchmark(await (await apiFetch('/api/benchmark')).json()); } catch { /* ignore */ }
   }
   useEffect(() => { threadRef.current?.scrollTo({ top: threadRef.current.scrollHeight, behavior: 'smooth' }); }, [messages, loading]);
   const pinBottom = () => { const el = threadRef.current; if (el) el.scrollTop = el.scrollHeight; };
@@ -1089,13 +1095,13 @@ function App() {
 
   async function loadHealth() {
     try {
-      const d = await (await fetch(api('/api/health'))).json();
+      const d = await (await apiFetch('/api/health')).json();
       setLive(!d.mock_mode);
       setStatus(d.mock_mode ? 'Demo mode' : 'Live models connected');
     } catch { setLive(false); setStatus('Backend offline'); }
   }
   async function loadRegistry() {
-    try { const d = await (await fetch(api('/api/registry'))).json(); setRegistry(d.tools || []); }
+    try { const d = await (await apiFetch('/api/registry')).json(); setRegistry(d.tools || []); }
     catch { setRegistry([]); }
   }
 
@@ -1120,7 +1126,7 @@ function App() {
     const fd = new FormData();
     picked.forEach((f) => fd.append('images', f));
     try {
-      const s = await (await fetch(api('/api/session'), { method: 'POST', body: fd })).json();
+      const s = await (await apiFetch('/api/session', { method: 'POST', body: fd })).json();
       setSessionId(s.session_id);
       fetchSuggestions(s.session_id);
     } catch (err) { alert(`Could not load the image: ${err}`); }
@@ -1145,7 +1151,7 @@ function App() {
   async function fetchSuggestions(sid) {
     setSuggestLoading(true);
     try {
-      const d = await (await fetch(api('/api/suggest'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ session_id: sid }) })).json();
+      const d = await (await apiFetch('/api/suggest', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ session_id: sid }) })).json();
       setSuggestions(d.suggestions || []);
     } catch { setSuggestions([]); }
     finally { setSuggestLoading(false); }
@@ -1162,7 +1168,7 @@ function App() {
    * are unaffected (the pump only waits when it is behind). */
   const STEP_PACE = 500;
   async function streamChat(sid, text, patch, t0) {
-    const r = await fetch(api('/api/chat/stream'), {
+    const r = await apiFetch('/api/chat/stream', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ session_id: sid, message: text }),
     });
@@ -1317,7 +1323,7 @@ function App() {
         // same choreography — populate the rail from the real trace, then
         // stream the answer text.
         try {
-          const r = await fetch(api('/api/chat'), {
+          const r = await apiFetch('/api/chat', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ session_id: sid, message: text }),
           });
@@ -1362,16 +1368,29 @@ function App() {
     if (fileInputRef.current) fileInputRef.current.value = '';
     setTimeout(() => fileInputRef.current?.click(), 0);
   }
-  const openReport = (id) => window.open(api(`/api/report/${id}`), '_blank', 'noopener,noreferrer');
-  const downloadReport = (id) => {
-    // /api/report/{id}/pdf serves the PDF with a download disposition, so a
-    // programmatic anchor click saves the file without navigating away.
-    const a = document.createElement('a');
-    a.href = api(`/api/report/${id}/pdf`);
-    a.rel = 'noopener';
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
+  // Reports are fetched (with the ngrok-skip header) and opened from a blob URL,
+  // so they work whether the backend is local or behind an ngrok tunnel — a
+  // direct window.open to an ngrok URL would hit the browser-warning page.
+  const openReport = async (id) => {
+    try {
+      const blob = await (await apiFetch(`/api/report/${id}`)).blob();
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank', 'noopener,noreferrer');
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch (e) { alert(`Could not open report: ${e}`); }
+  };
+  const downloadReport = async (id) => {
+    try {
+      const blob = await (await apiFetch(`/api/report/${id}/pdf`)).blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `satquery_${id}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch (e) { alert(`Could not download report: ${e}`); }
   };
 
   const hasScene = files.length > 0;
