@@ -121,10 +121,10 @@ button { font-family: inherit; cursor: pointer; }
   justify-content: space-between;
   gap: 12px;
   padding: 10px 14px;
-  background: #0B3557;
+  background: #0468a8;
   border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 14px;
-  box-shadow: 0 4px 18px rgba(11, 53, 87, 0.28);
+  box-shadow: 0 4px 18px rgba(4, 104, 168, 0.28);
 }
 .product-branding {
   display: flex;
@@ -231,11 +231,9 @@ button { font-family: inherit; cursor: pointer; }
 }
 
 .theme-dark .product-identity {
-  background: linear-gradient(135deg, rgba(9, 19, 34, 0.96) 0%, rgba(14, 30, 50, 0.94) 60%, rgba(19, 43, 71, 0.92) 100%);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow:
-    0 10px 28px -4px rgba(0, 0, 0, 0.5),
-    0 0 0 1px rgba(255, 255, 255, 0.08);
+  background: #0468a8;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.08);
 }
 .theme-dark .theme-switch {
   background: rgba(0, 0, 0, 0.5);
@@ -352,25 +350,46 @@ button { font-family: inherit; cursor: pointer; }
 }
 
 .k-btn-secondary {
-  background: rgba(125, 140, 160, 0.09);
-  border-color: var(--line);
-  color: var(--ink);
+  background: #E2E8F0;
+  border: 1px solid #CBD5E1;
+  color: #334155;
+  font-weight: 600;
+  transition: background-color 160ms ease-out, border-color 160ms ease-out, color 160ms ease-out, box-shadow 160ms ease-out;
+}
+.k-btn-secondary svg {
+  color: #475569;
+  transition: color 160ms ease-out;
 }
 .k-btn-secondary:hover:not(:disabled) {
-  background: rgba(37, 99, 235, 0.08);
-  border-color: rgba(37, 99, 235, 0.24);
-  color: #1d4ed8;
+  background: #CBD5E1;
+  border-color: #94A3B8;
+  color: #1E293B;
+}
+.k-btn-secondary:hover:not(:disabled) svg {
+  color: #1E293B;
 }
 .k-btn-secondary:active:not(:disabled) {
-  background: rgba(37, 99, 235, 0.12);
+  background: #94A3B8;
+  color: #0F172A;
+}
+.theme-dark .k-btn-secondary {
+  background: rgba(255, 255, 255, 0.10);
+  border-color: rgba(255, 255, 255, 0.16);
+  color: #f1f5f9;
+}
+.theme-dark .k-btn-secondary svg {
+  color: #cbd5e1;
 }
 .theme-dark .k-btn-secondary:hover:not(:disabled) {
-  background: rgba(56, 189, 248, 0.12);
-  border-color: rgba(56, 189, 248, 0.30);
-  color: #7dd3fc;
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.28);
+  color: #ffffff;
+}
+.theme-dark .k-btn-secondary:hover:not(:disabled) svg {
+  color: #ffffff;
 }
 .theme-dark .k-btn-secondary:active:not(:disabled) {
-  background: rgba(56, 189, 248, 0.18);
+  background: rgba(255, 255, 255, 0.24);
 }
 
 .k-btn-ghost { background: transparent; border-color: transparent; color: var(--ink-dim); }
@@ -548,25 +567,26 @@ button { font-family: inherit; cursor: pointer; }
   gap: 4px;
   padding: 4px 10px;
   border-radius: 999px;
-  background: #DBEAFE;
-  border: 1px solid #93C5FD;
-  color: #1E3A8A;
+  background: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.14);
+  color: #475569;
   font-family: var(--font-mono);
   font-size: var(--font-size-badge);
   font-weight: var(--font-weight-bold);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
-.counter-num { font-weight: 800; color: #1E3A8A; }
-.counter-sep { color: #64748B; opacity: 0.8; }
-.counter-max { color: #475569; }
+.counter-num { font-weight: 800; color: #334155; }
+.counter-sep { color: #94A3B8; opacity: 0.85; }
+.counter-max { color: #64748B; }
 .theme-dark .scene-counter {
-  background: rgba(56, 189, 248, 0.16);
-  border-color: rgba(56, 189, 248, 0.35);
-  color: #e0f2fe;
+  background: #ffffff;
+  border-color: rgba(255, 255, 255, 0.4);
+  color: #475569;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
 }
-.theme-dark .counter-num { color: #38bdf8; }
-.theme-dark .counter-sep { color: #94a3b8; }
-.theme-dark .counter-max { color: #cbd5e1; }
+.theme-dark .counter-num { color: #334155; }
+.theme-dark .counter-sep { color: #94A3B8; }
+.theme-dark .counter-max { color: #64748B; }
 
 /* Scene Preview Card */
 .scene-preview-card {
@@ -586,11 +606,12 @@ button { font-family: inherit; cursor: pointer; }
   gap: 6px;
   padding: 3px;
   border-radius: 10px;
-  background: rgba(15, 23, 42, 0.05);
+  background: rgba(15, 23, 42, 0.04);
   border: 1px solid var(--line-soft);
 }
 .theme-dark .scene-tabs {
   background: rgba(0, 0, 0, 0.25);
+  border-color: rgba(255, 255, 255, 0.08);
 }
 .scene-tab {
   flex: 1;
@@ -600,34 +621,80 @@ button { font-family: inherit; cursor: pointer; }
   gap: 6px;
   padding: 6px 10px;
   border-radius: 8px;
-  border: 1px solid transparent;
-  background: transparent;
-  color: var(--ink-dim);
+  border: 1px solid rgba(203, 213, 225, 0.5);
+  background: #F1F5F9;
+  color: #64748B;
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 160ms ease;
+  transition: background-color 160ms ease-out, border-color 160ms ease-out, color 160ms ease-out, box-shadow 160ms ease-out;
   min-width: 0;
 }
 .scene-tab:hover {
-  color: var(--ink);
-  background: rgba(255, 255, 255, 0.5);
+  background: #E2E8F0;
+  border-color: #CBD5E1;
+  color: #334155;
 }
-.scene-tab.is-active {
-  background: #DBEAFE;
-  border-color: #93C5FD;
-  color: #1E3A8A;
-  box-shadow: 0 1px 3px rgba(30, 58, 138, 0.08);
+.scene-tab:focus-visible {
+  outline: 2px solid #057bc7;
+  outline-offset: 2px;
 }
-.theme-dark .scene-tab.is-active {
-  background: rgba(56, 189, 248, 0.20);
-  border-color: rgba(56, 189, 248, 0.40);
-  color: #ffffff;
-}
-.tab-tag {
+.scene-tab .tab-tag {
   font-family: var(--font-mono);
   font-size: 10.5px;
+  font-weight: 700;
+  color: #94A3B8;
+  transition: color 160ms ease-out;
+}
+.scene-tab:hover .tab-tag {
+  color: #64748B;
+}
+.scene-tab.is-active {
+  background: #E2E8F0;
+  border-color: #CBD5E1;
+  color: #334155;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+.scene-tab.is-active .tab-tag {
+  color: #057bc7;
   font-weight: 800;
+}
+.scene-tab.is-active .tab-name {
+  color: #1E293B;
+  font-weight: 650;
+}
+.theme-dark .scene-tab {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.08);
+  color: #94a3b8;
+}
+.theme-dark .scene-tab:hover {
+  background: rgba(255, 255, 255, 0.10);
+  border-color: rgba(255, 255, 255, 0.16);
+  color: #e2e8f0;
+}
+.theme-dark .scene-tab:focus-visible {
+  outline-color: #38bdf8;
+}
+.theme-dark .scene-tab .tab-tag {
+  color: #64748b;
+}
+.theme-dark .scene-tab:hover .tab-tag {
+  color: #94a3b8;
+}
+.theme-dark .scene-tab.is-active {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.22);
+  color: #f1f5f9;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+}
+.theme-dark .scene-tab.is-active .tab-tag {
+  color: #38bdf8;
+  font-weight: 800;
+}
+.theme-dark .scene-tab.is-active .tab-name {
+  color: #ffffff;
+  font-weight: 650;
 }
 .tab-name {
   white-space: nowrap;
@@ -661,6 +728,19 @@ button { font-family: inherit; cursor: pointer; }
   top: 8px;
   left: 8px;
   z-index: 2;
+}
+.scene-viewport-badge .k-badge {
+  background: #ffffff !important;
+  color: #000000 !important;
+  border: 1px solid rgba(0, 0, 0, 0.16) !important;
+  font-family: var(--font-mono);
+  font-weight: 800;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+.theme-dark .scene-viewport-badge .k-badge {
+  background: #ffffff !important;
+  color: #000000 !important;
+  border: 1px solid rgba(255, 255, 255, 0.6) !important;
 }
 
 /* Scene Summary */
@@ -702,10 +782,46 @@ button { font-family: inherit; cursor: pointer; }
 }
 .scene-actions .remove-btn {
   margin-left: auto;
-  color: var(--ink-faint);
+  background: #E2E8F0;
+  border: 1px solid #CBD5E1;
+  color: #475569;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  transition: background-color 160ms ease-out, border-color 160ms ease-out, color 160ms ease-out;
 }
-.scene-actions .remove-btn:hover {
-  color: #ef4444;
+.scene-actions .remove-btn svg {
+  color: #64748B;
+  transition: color 160ms ease-out;
+}
+.scene-actions .remove-btn:hover:not(:disabled) {
+  background: #FEE2E2;
+  border-color: #FCA5A5;
+  color: #DC2626;
+}
+.scene-actions .remove-btn:hover:not(:disabled) svg {
+  color: #DC2626;
+}
+.scene-actions .remove-btn:active:not(:disabled) {
+  background: #FECACA;
+  color: #B91C1C;
+}
+.theme-dark .scene-actions .remove-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.14);
+  color: #cbd5e1;
+}
+.theme-dark .scene-actions .remove-btn svg {
+  color: #94a3b8;
+}
+.theme-dark .scene-actions .remove-btn:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.18);
+  border-color: rgba(239, 68, 68, 0.40);
+  color: #fca5a5;
+}
+.theme-dark .scene-actions .remove-btn:hover:not(:disabled) svg {
+  color: #fca5a5;
 }
 
 /* Scene Information / Metadata Table */
@@ -1853,9 +1969,9 @@ button { font-family: inherit; cursor: pointer; }
   position: fixed;
   inset: 0;
   z-index: 9999;
-  background: rgba(6, 13, 20, 0.90);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  background: rgba(241, 245, 249, 0.82);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1863,6 +1979,12 @@ button { font-family: inherit; cursor: pointer; }
   padding: 16px 20px;
   animation: viewer-fade 180ms ease-out both;
   user-select: none;
+}
+.theme-dark .gis-viewer-backdrop,
+[data-theme="dark"] .gis-viewer-backdrop {
+  background: rgba(6, 13, 20, 0.90);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
 }
 @keyframes viewer-fade {
   from { opacity: 0; }
@@ -1879,12 +2001,16 @@ button { font-family: inherit; cursor: pointer; }
   gap: 16px;
   padding: 8px 14px;
   border-radius: 999px;
+  background: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  box-shadow: 0 12px 36px -6px rgba(15, 23, 42, 0.18), 0 2px 8px rgba(15, 23, 42, 0.08);
+  z-index: 10;
+}
+.theme-dark .gis-viewer-header,
+[data-theme="dark"] .gis-viewer-header {
   background: rgba(15, 23, 42, 0.88);
   border: 1px solid rgba(255, 255, 255, 0.16);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
   box-shadow: 0 12px 36px -6px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.08);
-  z-index: 10;
 }
 .gis-viewer-meta {
   display: inline-flex;
@@ -1894,19 +2020,27 @@ button { font-family: inherit; cursor: pointer; }
   padding-left: 6px;
 }
 .gis-viewer-icon {
-  color: #38bdf8;
+  color: #057bc7;
   flex-shrink: 0;
 }
+.theme-dark .gis-viewer-icon,
+[data-theme="dark"] .gis-viewer-icon {
+  color: #38bdf8;
+}
 .gis-viewer-title {
-  color: #f8fafc;
+  color: #0f172a;
   font-family: var(--font-mono);
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: -0.01em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 320px;
+}
+.theme-dark .gis-viewer-title,
+[data-theme="dark"] .gis-viewer-title {
+  color: #f8fafc;
 }
 
 /* Control Pills */
@@ -1924,9 +2058,9 @@ button { font-family: inherit; cursor: pointer; }
   height: 32px;
   padding: 0 11px;
   border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  background: rgba(255, 255, 255, 0.08);
-  color: #e2e8f0;
+  border: 1px solid #CBD5E1;
+  background: #F1F5F9;
+  color: #1E293B;
   font-family: var(--font-body);
   font-size: 12px;
   font-weight: 600;
@@ -1934,6 +2068,18 @@ button { font-family: inherit; cursor: pointer; }
   transition: background-color 140ms ease-out, border-color 140ms ease-out, color 140ms ease-out;
 }
 .gis-btn:hover {
+  background: #E2E8F0;
+  border-color: #94A3B8;
+  color: #0F172A;
+}
+.theme-dark .gis-btn,
+[data-theme="dark"] .gis-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #e2e8f0;
+}
+.theme-dark .gis-btn:hover,
+[data-theme="dark"] .gis-btn:hover {
   background: rgba(255, 255, 255, 0.18);
   border-color: rgba(255, 255, 255, 0.32);
   color: #ffffff;
@@ -1941,23 +2087,40 @@ button { font-family: inherit; cursor: pointer; }
 .gis-pct-btn {
   font-family: var(--font-mono);
   font-size: 12px;
+  font-weight: 700;
   min-width: 54px;
   padding: 0 8px;
 }
 .gis-divider {
   width: 1px;
   height: 18px;
-  background: rgba(255, 255, 255, 0.16);
+  background: #CBD5E1;
   margin: 0 4px;
 }
+.theme-dark .gis-divider,
+[data-theme="dark"] .gis-divider {
+  background: rgba(255, 255, 255, 0.16);
+}
 .gis-close-btn {
-  background: rgba(239, 68, 68, 0.15);
-  border-color: rgba(239, 68, 68, 0.35);
-  color: #fca5a5;
+  background: #FEE2E2;
+  border-color: #FCA5A5;
+  color: #B91C1C;
   width: 32px;
   padding: 0;
 }
 .gis-close-btn:hover {
+  background: #EF4444;
+  border-color: #DC2626;
+  color: #ffffff;
+}
+.theme-dark .gis-close-btn,
+[data-theme="dark"] .gis-close-btn {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.35);
+  color: #fca5a5;
+}
+.theme-dark .gis-close-btn:hover,
+[data-theme="dark"] .gis-close-btn:hover {
   background: rgba(239, 68, 68, 0.85);
   border-color: rgba(239, 68, 68, 0.95);
   color: #ffffff;
@@ -1986,8 +2149,12 @@ button { font-family: inherit; cursor: pointer; }
   max-height: 75vh;
   object-fit: contain;
   border-radius: 8px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
+  box-shadow: 0 20px 60px rgba(15, 23, 42, 0.25);
   pointer-events: none;
+}
+.theme-dark .gis-viewer-img,
+[data-theme="dark"] .gis-viewer-img {
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
 }
 
 /* Bottom Floating HUD */
@@ -1997,18 +2164,26 @@ button { font-family: inherit; cursor: pointer; }
   gap: 8px;
   padding: 6px 14px;
   border-radius: 999px;
+  background: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  color: #475569;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  box-shadow: 0 8px 24px -4px rgba(15, 23, 42, 0.16), 0 2px 6px rgba(15, 23, 42, 0.08);
+  z-index: 10;
+}
+.theme-dark .gis-viewer-hud,
+[data-theme="dark"] .gis-viewer-hud {
   background: rgba(15, 23, 42, 0.80);
   border: 1px solid rgba(255, 255, 255, 0.12);
   color: #94a3b8;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 0.02em;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  z-index: 10;
+  box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.5);
 }
 .hud-dot {
-  opacity: 0.5;
+  color: #94A3B8;
+  opacity: 0.8;
 }
 .gis-viewer-hud kbd {
   display: inline-block;
@@ -2016,10 +2191,16 @@ button { font-family: inherit; cursor: pointer; }
   font-size: 10px;
   font-weight: 700;
   line-height: 1;
+  color: #0F172A;
+  background: #F1F5F9;
+  border: 1px solid #CBD5E1;
+  border-radius: 4px;
+}
+.theme-dark .gis-viewer-hud kbd,
+[data-theme="dark"] .gis-viewer-hud kbd {
   color: #f1f5f9;
   background: rgba(255, 255, 255, 0.15);
   border: 1px solid rgba(255, 255, 255, 0.25);
-  border-radius: 4px;
 }
 
 .mission-foot { display: none; }
