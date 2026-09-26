@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/satquery-logo.png" alt="SatQuery AI" width="850">
+  <img src="assets/satquery-logo.png" alt="SatQuery AI" width="650">
 </p>
 
 <p align="center">
