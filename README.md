@@ -12,7 +12,7 @@
 
 <p align="center">
   <a href="https://github.com/PoorvaJawale/northstar">Repository</a> ·
-  <a href="https://northstar-satqueryai.vercel.app/">Live Prototype</a>
+  <a href="https://northstar-satqueryai.vercel.app/">Live Prototype</a> .
   <a href="">Demo Video</a>
 </p>
 
