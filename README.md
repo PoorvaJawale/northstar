@@ -1,5 +1,9 @@
 <p align="center">
-  <img src="assets/satquery-logo.png" alt="SatQuery AI" width="400">
+  <img
+    src="assets/satquery-banner.png"
+    alt="SatQuery AI"
+    width="100%"
+  />
 </p>
 
 <p align="center">
