@@ -1,6 +1,6 @@
 <p align="center">
   <img
-    src="frontend/public/logo/satquery-banner.png"
+    src="assets/satquery-banner.png"
     alt="SatQuery AI"
     width="100%"
   />
