@@ -147,101 +147,38 @@ button { font-family: inherit; cursor: pointer; }
   letter-spacing: -0.01em;
   line-height: 1.2;
 }
-/* Modern Professional Theme Switch */
-.theme-switch {
-  position: relative;
-  width: 58px;
-  height: 30px;
-  padding: 3px;
-  border-radius: 999px;
-  background: rgba(0, 0, 0, 0.28);
-  border: 1px solid rgba(255, 255, 255, 0.20);
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.25), 0 1px 2px rgba(255, 255, 255, 0.1);
+/* Minimalist Desktop Theme Toggle Button (matching mobile minimalism) */
+.product-theme-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(0, 0, 0, 0.22);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: #ffffff;
   cursor: pointer;
   flex: 0 0 auto;
-  transition: all 220ms cubic-bezier(0.4, 0, 0.2, 1);
-  outline: none;
+  transition: all 180ms ease;
 }
-.theme-switch:hover {
+.product-theme-btn:hover {
+  background: rgba(255, 255, 255, 0.22);
   border-color: rgba(255, 255, 255, 0.45);
-  background: rgba(0, 0, 0, 0.36);
+  color: #ffffff;
+  transform: scale(1.05);
 }
-.theme-switch:focus-visible {
-  box-shadow: 0 0 0 2px #38BDF8, inset 0 2px 4px rgba(0, 0, 0, 0.25);
-}
-.theme-switch-track {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 4px;
-}
-.theme-switch-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  z-index: 1;
-  pointer-events: none;
-  transition: opacity 220ms ease, color 220ms ease;
-}
-.theme-switch-icon.icon-light {
-  color: #FDBA74;
-}
-.theme-switch-icon.icon-dark {
-  color: #94A3B8;
-}
-.theme-switch.is-light .theme-switch-icon.icon-light {
-  opacity: 0;
-}
-.theme-switch.is-light .theme-switch-icon.icon-dark {
-  opacity: 0.8;
-}
-.theme-switch.is-dark .theme-switch-icon.icon-light {
-  opacity: 0.8;
-}
-.theme-switch.is-dark .theme-switch-icon.icon-dark {
-  opacity: 0;
-}
-
-.theme-switch-thumb {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background: #ffffff;
-  color: #0369A1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.15);
-  transition: transform 260ms cubic-bezier(0.34, 1.56, 0.64, 1), background-color 220ms ease, color 220ms ease;
-  z-index: 2;
-}
-.theme-switch.is-dark .theme-switch-thumb {
-  transform: translateX(28px);
-  background: #1E293B;
-  color: #38BDF8;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(56, 189, 248, 0.35);
+.product-theme-btn:active {
+  transform: scale(0.94);
+  background: rgba(255, 255, 255, 0.32);
 }
 
 .theme-dark .product-identity {
   background: #0468a8;
   border: 1px solid rgba(255, 255, 255, 0.16);
   box-shadow: none;
-}
-.theme-dark .theme-switch {
-  background: rgba(0, 0, 0, 0.5);
-  border-color: rgba(255, 255, 255, 0.16);
-}
-.theme-dark .theme-switch:hover {
-  background: rgba(0, 0, 0, 0.65);
-  border-color: rgba(56, 189, 248, 0.4);
 }
 
 /* ---------- Lucide outline icon base & alignment ---------- */
@@ -840,6 +777,29 @@ button { font-family: inherit; cursor: pointer; }
   color: var(--ink-faint);
   margin-bottom: 9px;
 }
+.sec-title-collapsible {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+.sec-title-collapsible:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+.sec-title-collapsible .sec-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
 .sec-meta {
   color: var(--ink-dim);
   letter-spacing: 0.02em;
@@ -1086,50 +1046,56 @@ button { font-family: inherit; cursor: pointer; }
   margin-top: 2px;
   color: var(--ink);
 }
-.report-head-btn {
+.card-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.report-head-btn,
+.chat-expand-btn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 600;
-  color: #1E293B;
-  background: #E2E8F0;
-  border: 1px solid #CBD5E1;
-  transition: background-color 150ms ease-out, border-color 150ms ease-out, color 150ms ease-out;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border-radius: 6px;
+  background: transparent !important;
+  border: none !important;
+  color: #64748B;
+  cursor: pointer;
+  transition: color 150ms ease-out, background-color 150ms ease-out, transform 120ms ease;
 }
-.report-head-btn svg {
-  color: #334155;
-  transition: color 150ms ease-out;
+.report-head-btn svg,
+.chat-expand-btn svg {
+  color: inherit;
+  transition: transform 120ms ease;
 }
-.report-head-btn:hover {
-  background: #CBD5E1;
-  color: #1E293B;
-  border-color: #94A3B8;
+.report-head-btn:hover,
+.chat-expand-btn:hover {
+  background: rgba(0, 0, 0, 0.06) !important;
+  color: #0f172a;
 }
-.report-head-btn:hover svg {
-  color: #334155;
+.report-head-btn:active,
+.chat-expand-btn:active {
+  transform: scale(0.92);
 }
-.report-head-btn:active {
-  background: #94A3B8;
-  color: #1E293B;
+.theme-dark .report-head-btn,
+.theme-dark .chat-expand-btn {
+  color: #94A3B8;
+  background: transparent !important;
 }
-.theme-dark .report-head-btn {
-  background: rgba(255, 255, 255, 0.10);
-  border-color: rgba(255, 255, 255, 0.18);
-  color: #F1F5F9;
+.theme-dark .report-head-btn:hover,
+.theme-dark .chat-expand-btn:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: #ffffff;
 }
-.theme-dark .report-head-btn svg {
-  color: #CBD5E1;
-}
-.theme-dark .report-head-btn:hover {
-  background: rgba(255, 255, 255, 0.18);
-  border-color: rgba(255, 255, 255, 0.30);
-  color: #F1F5F9;
-}
-.theme-dark .report-head-btn:hover svg {
-  color: #CBD5E1;
+.card-head-divider {
+  width: 1px;
+  height: 16px;
+  background: var(--line);
+  margin: 0 4px;
+  flex-shrink: 0;
 }
 
 /* Chat thread */
@@ -1677,20 +1643,18 @@ button { font-family: inherit; cursor: pointer; }
   display: flex;
   flex-direction: column;
   gap: 6px;
-  background: rgba(255, 255, 255, 0.55);
-  border: 1px solid var(--line-soft);
+  background: transparent;
+  border: none;
   border-radius: 16px;
-  padding: 6px 10px 8px;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  padding: 2px 2px 4px;
   transition: all 200ms ease-out;
   width: 100%;
   min-width: 0;
   box-sizing: border-box;
 }
 .theme-dark .suggest-toolbar {
-  background: rgba(15, 23, 42, 0.55);
-  border-color: rgba(255, 255, 255, 0.08);
+  background: transparent;
+  border-color: transparent;
 }
 .suggest-toolbar.is-collapsed {
   padding: 4px 10px;
@@ -1931,6 +1895,21 @@ button { font-family: inherit; cursor: pointer; }
   display: inline-flex; align-items: center; gap: 5px;
   font-family: var(--font-mono); font-size: 11px; color: var(--ink-faint);
   padding: 0 4px;
+}
+.prompt-voice-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  border: 1px solid var(--line-soft);
+  background: transparent;
+  color: var(--ink-faint);
+  opacity: 0.6;
+  cursor: not-allowed;
+  transition: opacity 150ms ease;
+  flex-shrink: 0;
 }
 
 /* Modern GIS Image Inspector Lightbox */
@@ -2220,22 +2199,486 @@ button { font-family: inherit; cursor: pointer; }
 
 .mission-foot { display: none; }
 
-/* Responsive: split-studio collapses to single column under 900px */
-@media (max-width: 900px) {
-  .mission-bar { display: flex; margin: 8px 10px 0; padding: 9px 14px; gap: 10px; }
-  .mission-nav { display: none; }
-  .brand-copy p { display: none; }
-  .workspace { grid-template-columns: 1fr; padding: 10px; overflow-y: auto; }
-  .scene-card { overflow: visible; }
-  .chat-card { min-height: 60dvh; }
-  .msg .bubble { max-width: 92%; }
+/* ==================================================================
+ * RESPONSIVE ARCHITECTURE: Desktop (>= 1024px) · Tablet (768–1023px) · Mobile (< 768px)
+ * Desktop layout & functionality remain 100% untouched.
+ * ================================================================== */
+
+/* Hide mobile-only components on Desktop and Tablet (>= 768px) */
+@media (min-width: 768px) {
+  .mobile-header,
+  .mobile-bottom-nav {
+    display: none !important;
+  }
 }
-@media (max-width: 600px) {
-  .theme-toggle-text { display: none; }
-  .prompt-model { display: none; }
-  .k-btn.send span { display: none; }
-  .k-btn.send { padding: 10px 14px; }
-  .bot-evidence .img-wrap img { height: 130px; }
+
+/* Tablet (768px – 1023px): Preserves 2-panel split studio workspace with adjusted columns */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .workspace {
+    grid-template-columns: 310px 1fr;
+    padding: 14px 16px;
+    gap: 12px;
+  }
+}
+
+@media (min-width: 768px) {
+  .chat-is-expanded .workspace {
+    grid-template-columns: 1fr !important;
+  }
+  .chat-is-expanded .scene-inspector {
+    display: none !important;
+  }
+}
+
+/* Mobile Screens (< 768px): Dedicated Mobile Architecture */
+@media (max-width: 767px) {
+  html, body, #root, .page {
+    overflow-x: hidden;
+    height: 100%;
+    min-height: 100dvh;
+  }
+  .tricolor {
+    display: none;
+  }
+  .mission-bar, .mission-foot {
+    display: none !important;
+  }
+
+  /* Top Mobile Header (< 768px): Completely transparent background with subtle top black fade */
+  .mobile-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 60;
+    height: calc(56px + env(safe-area-inset-top, 0px));
+    padding: env(safe-area-inset-top, 0px) 16px 0 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(to bottom, rgba(0, 0, 0, 0.72) 0%, rgba(0, 0, 0, 0.35) 65%, transparent 100%) !important;
+    border-bottom: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    box-shadow: none !important;
+    transition: opacity 320ms cubic-bezier(0.16, 1, 0.3, 1),
+                transform 320ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .chat-is-expanded .mobile-header {
+    opacity: 0 !important;
+    pointer-events: none !important;
+    transform: translateY(-10px) !important;
+  }
+  .mobile-brand {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    user-select: none;
+  }
+  .mobile-logo-img {
+    width: 28px;
+    height: 28px;
+    object-fit: contain;
+    border-radius: 6px;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
+  }
+  .mobile-app-name {
+    font-size: 16.5px;
+    font-weight: 700;
+    letter-spacing: -0.015em;
+    color: #ffffff !important;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.65);
+  }
+  .mobile-header-actions {
+    position: absolute;
+    right: 14px;
+    top: calc(env(safe-area-inset-top, 0px) + 28px);
+    transform: translateY(-50%);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .mobile-header-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: none !important;
+    background: rgba(0, 0, 0, 0.25) !important;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    color: #ffffff !important;
+    cursor: pointer;
+    transition: background 150ms ease, color 150ms ease, opacity 150ms ease;
+  }
+  .mobile-header-btn:active {
+    background: rgba(255, 255, 255, 0.25) !important;
+  }
+
+  /* Floating Mobile Bottom Navigation Pill (< 768px): Only Inspector and Chat */
+  .mobile-bottom-nav {
+    position: fixed;
+    bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+    left: 50%;
+    transform: translateX(-50%);
+    width: calc(100% - 32px);
+    max-width: 320px;
+    height: 48px;
+    border-radius: 999px;
+    z-index: 70;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr) !important;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.95);
+    border-top: 3px solid #ff9933 !important;
+    border-bottom: 3px solid #138808 !important;
+    border-left: 1px solid rgba(226, 232, 240, 0.85);
+    border-right: 1px solid rgba(226, 232, 240, 0.85);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.08);
+    padding: 0 4px;
+    gap: 4px;
+    overflow: hidden;
+    transition: opacity 320ms cubic-bezier(0.16, 1, 0.3, 1),
+                transform 320ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .chat-is-expanded .mobile-bottom-nav {
+    opacity: 0 !important;
+    pointer-events: none !important;
+    transform: translate(-50%, 20px) !important;
+  }
+  .theme-dark .mobile-bottom-nav {
+    background: rgba(20, 26, 40, 0.92);
+    border-top: 3px solid #ff9933 !important;
+    border-bottom: 3px solid #138808 !important;
+    border-left: 1px solid rgba(255, 255, 255, 0.12);
+    border-right: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+  }
+  .mobile-nav-item {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    height: 100%;
+    min-height: 44px;
+    background: transparent;
+    border: none;
+    border-radius: 999px;
+    padding: 0 12px;
+    cursor: pointer;
+    color: #64748B;
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 180ms ease;
+    user-select: none;
+  }
+  .theme-dark .mobile-nav-item {
+    color: #94A3B8;
+  }
+  .mobile-nav-item.is-active {
+    background: #057bc7;
+    color: #ffffff;
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba(5, 123, 199, 0.35);
+  }
+  .theme-dark .mobile-nav-item.is-active {
+    background: #057bc7;
+    color: #ffffff;
+    box-shadow: 0 2px 10px rgba(5, 123, 199, 0.45);
+  }
+  .mobile-nav-item:active {
+    transform: scale(0.96);
+  }
+  .nav-icon-badge-wrap {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .mobile-nav-badge {
+    position: absolute;
+    top: -4px;
+    right: -8px;
+    min-width: 15px;
+    height: 15px;
+    padding: 0 3px;
+    border-radius: 999px;
+    background: #057bc7;
+    color: #ffffff;
+    font-family: var(--font-mono);
+    font-size: 9px;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+  }
+  .mobile-nav-item.is-active .mobile-nav-badge {
+    background: #ffffff;
+    color: #057bc7;
+  }
+  .mobile-nav-dot {
+    position: absolute;
+    top: -2px;
+    right: -4px;
+    width: 6px;
+    height: 6px;
+    border-radius: 999px;
+    background: #057bc7;
+  }
+  .mobile-nav-item.is-active .mobile-nav-dot {
+    background: #ffffff;
+  }
+
+  /* Workspace composition on mobile */
+  .workspace {
+    display: block !important;
+    position: relative;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 100% !important;
+    overflow: hidden !important;
+  }
+
+  /* ================= SCENE INSPECTOR (mobileTab === 'inspector') =================
+   * Shows inspector card floating separated above the floating bottom buttons */
+  .mobile-tab-inspector .chat-card {
+    display: none !important;
+  }
+  .mobile-tab-inspector .scene-inspector {
+    display: flex !important;
+    position: fixed !important;
+    top: calc(56px + env(safe-area-inset-top, 0px) + 6px) !important;
+    bottom: calc(76px + env(safe-area-inset-bottom, 0px)) !important;
+    left: 12px !important;
+    right: 12px !important;
+    z-index: 50 !important;
+    border-radius: 22px !important;
+    border: 1px solid var(--line) !important;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.16) !important;
+    background: var(--glass-strong) !important;
+    backdrop-filter: blur(20px) !important;
+    -webkit-backdrop-filter: blur(20px) !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    animation: inspectorIn 220ms cubic-bezier(0.16, 1, 0.3, 1) both !important;
+  }
+  @keyframes inspectorIn {
+    from { opacity: 0; transform: translateY(8px) scale(0.99); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  .scene-inspector .product-identity {
+    display: none !important;
+  }
+  .scene-header {
+    padding: 12px 18px;
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .scene-header-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .scene-scroll-body {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 16px 16px 24px 16px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .scene-viewport {
+    width: 100%;
+    max-height: 240px;
+  }
+  .scene-viewport .img-wrap img {
+    max-height: 240px;
+    object-fit: contain;
+  }
+  .scene-actions .action-btn {
+    min-height: 44px;
+  }
+
+  /* ================= AI ASSISTANT CHAT (mobileTab === 'chat') ================= */
+  .mobile-tab-chat .scene-inspector {
+    display: none !important;
+  }
+  .mobile-tab-chat .chat-card {
+    display: flex !important;
+    position: fixed !important;
+    top: calc(56px + env(safe-area-inset-top, 0px) + 6px) !important;
+    bottom: calc(76px + env(safe-area-inset-bottom, 0px)) !important;
+    left: 12px !important;
+    right: 12px !important;
+    z-index: 80 !important;
+    border-radius: 22px !important;
+    border: 1px solid var(--line) !important;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.16) !important;
+    background: var(--glass-strong) !important;
+    backdrop-filter: blur(20px) !important;
+    -webkit-backdrop-filter: blur(20px) !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: hidden !important;
+    animation: chatIn 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
+    transition: top 360ms cubic-bezier(0.16, 1, 0.3, 1),
+                bottom 360ms cubic-bezier(0.16, 1, 0.3, 1),
+                left 360ms cubic-bezier(0.16, 1, 0.3, 1),
+                right 360ms cubic-bezier(0.16, 1, 0.3, 1),
+                border-radius 360ms cubic-bezier(0.16, 1, 0.3, 1),
+                box-shadow 360ms cubic-bezier(0.16, 1, 0.3, 1),
+                background-color 360ms cubic-bezier(0.16, 1, 0.3, 1),
+                border-color 360ms cubic-bezier(0.16, 1, 0.3, 1);
+    will-change: top, bottom, left, right, border-radius;
+  }
+  @keyframes chatIn {
+    from { opacity: 0; transform: translateY(8px) scale(0.99); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  /* Fullscreen Chat expansion on mobile:
+   * Smoothly expands to 100% full screen covering the entire navbar and bottom area with zero map visible */
+  .chat-is-expanded.mobile-tab-chat .chat-card,
+  .mobile-tab-chat.chat-is-expanded .chat-card {
+    top: 0 !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    z-index: 100 !important;
+    border-radius: 0 !important;
+    border-color: transparent !important;
+    box-shadow: none !important;
+    background: #09101a !important; /* Fully opaque in dark mode: zero map seen below */
+  }
+  .theme-light.chat-is-expanded.mobile-tab-chat .chat-card,
+  .theme-light.mobile-tab-chat.chat-is-expanded .chat-card,
+  [data-theme="light"].chat-is-expanded.mobile-tab-chat .chat-card,
+  [data-theme="light"].mobile-tab-chat.chat-is-expanded .chat-card {
+    background: #f8fafc !important; /* Fully opaque in light mode: zero map seen below */
+  }
+
+  .chat-card .card-head {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--line-soft);
+    flex-shrink: 0;
+    transition: padding 360ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .chat-is-expanded .chat-card .card-head {
+    padding-top: calc(14px + env(safe-area-inset-top, 0px)) !important;
+    padding-bottom: 12px !important;
+  }
+  .chat-composer {
+    flex-shrink: 0;
+    padding: 4px 12px 8px 12px;
+    background: transparent !important;
+    border-top: none !important;
+    transition: padding 360ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .chat-is-expanded .chat-composer {
+    padding-bottom: calc(14px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+  .ai-assistant-head h2 {
+    font-size: 15px;
+  }
+  .ai-assistant-head .kicker {
+    font-size: 9.5px;
+  }
+  .chat-thread {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 22px 14px 28px 14px;
+    -webkit-overflow-scrolling: touch;
+    -webkit-mask-image: linear-gradient(
+      to bottom,
+      transparent 0px,
+      black 26px,
+      black calc(100% - 28px),
+      transparent 100%
+    );
+    mask-image: linear-gradient(
+      to bottom,
+      transparent 0px,
+      black 26px,
+      black calc(100% - 28px),
+      transparent 100%
+    );
+  }
+  .msg.user .bubble {
+    max-width: 82%;
+    border-radius: 16px 16px 4px 16px;
+  }
+  .msg.bot {
+    max-width: 100%;
+  }
+  .msg.bot .bubble,
+  .bot-card {
+    max-width: 92%;
+    border-radius: 16px 16px 16px 4px;
+  }
+  .suggest-toolbar {
+    margin-bottom: 6px;
+    background: transparent !important;
+    border: none !important;
+  }
+  .suggest-scroll-row {
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+  }
+  .suggest-chip {
+    flex-shrink: 0 !important;
+    min-height: 40px;
+    padding: 6px 12px;
+    font-size: 12.5px;
+  }
+  .promptbar {
+    min-height: 52px;
+    height: 52px;
+    padding: 5px 6px 5px 8px;
+  }
+  .prompt-ctx {
+    padding: 5px 8px;
+    font-size: 10px;
+  }
+  .prompt-model {
+    display: none;
+  }
+  .k-btn.send {
+    min-width: 44px;
+    min-height: 44px;
+    padding: 8px 14px;
+  }
+
+  /* Fullscreen GIS Viewer on Mobile */
+  .gis-viewer-header {
+    max-width: 100%;
+    padding: 6px 10px;
+    gap: 8px;
+  }
+  .gis-viewer-title {
+    max-width: 130px;
+    font-size: 11.5px;
+  }
+  .gis-btn {
+    padding: 5px 8px;
+    font-size: 11px;
+    min-height: 36px;
+  }
+  .gis-viewer-hud {
+    font-size: 9.5px;
+    padding: 4px 10px;
+  }
 }
 
 /* Motion + transparency safety */
