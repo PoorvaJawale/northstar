@@ -26,25 +26,13 @@
 
 **SatQuery AI** is an agentic vision-language assistant for remote-sensing imagery. Instead of requiring users to manually choose a GIS workflow or specialist model, users can upload satellite image(s) and ask a question in natural language.
 
-The system then:
-
-```text
-Satellite Image(s) + Natural-Language Query
- ↓
- Input Inspection
- ↓
- Query Classification
- ↓
- Specialist Model Selection
- ↓
- Model Execution
- ↓
- Evidence Fusion
- ↓
- Answer + Visual Evidence
- ↓
- Auditable Trace
-```
+<p align="center">
+  <img
+    src="assets/satquery-workflow.png"
+    alt="SatQuery AI Workflow Pipeline"
+    width="100%"
+  />
+</p>
 
 The goal is to make multimodal satellite-image analysis more accessible while keeping specialist remote-sensing models behind a single conversational interface.
 
