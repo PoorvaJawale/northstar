@@ -40,14 +40,14 @@ The goal is to make multimodal satellite-image analysis more accessible while ke
 
 ## Smart India Hackathon 2026
 
-| Detail | Information |
+| Detail                      | Information                                                                                                 |
 | --------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| **Problem Statement** | **26167** |
+| **Problem Statement**       | **26167**                                                                                                   |
 | **Problem Statement Title** | SatQuery AI – Interactive Vision-Language Assistant for Multimodal Remote-Sensing Analysis via Text Queries |
-| **Organization** | Indian Space Research Organisation (ISRO) |
-| **Theme** | Space Technology |
-| **Category** | Software |
-| **Team** | NorthStar |
+| **Organization**            | Indian Space Research Organisation (ISRO)                                                                   |
+| **Theme**                   | Space Technology                                                                                            |
+| **Category**                | Software                                                                                                    |
+| **Team**                    | NorthStar                                                                                                   |
 
 ---
 
@@ -101,12 +101,12 @@ This makes the processing path observable rather than treating the system as a b
 
 ## Specialist Models
 
-| Model / Component | Role | Current status |
+| Model / Component        | Role                                         | Current status                            |
 | ------------------------ | -------------------------------------------- | ----------------------------------------- |
-| **GeoChat** | Remote-sensing VQA, captioning and grounding | **Real / live for single-image tasks** |
-| **ChangeFormer / BIT** | Bi-temporal change analysis | Tool wired; specialist model configurable |
-| **Optical-SAR Fusion** | Cross-modal optical + SAR reasoning | Tool wired; specialist model configurable |
-| **Qwen2.5 / LLM Router** | Query classification and task routing | Optional router path |
+| **GeoChat**              | Remote-sensing VQA, captioning and grounding | **Real / live for single-image tasks**    |
+| **ChangeFormer / BIT**   | Bi-temporal change analysis                  | Tool wired; specialist model configurable |
+| **Optical-SAR Fusion**   | Cross-modal optical + SAR reasoning          | Tool wired; specialist model configurable |
+| **Qwen2.5 / LLM Router** | Query classification and task routing        | Optional router path                      |
 
 > The repository intentionally distinguishes implemented/live components from configurable or mock specialist paths. This keeps the SIH submission reproducible and avoids claiming model capabilities that are not currently wired to a verified checkpoint.
 
@@ -320,17 +320,17 @@ The live GeoChat path currently covers single-image tasks. Two-image change and 
 
 ## ️ Configuration
 
-| Variable | Default | Purpose |
+| Variable            | Default             | Purpose                                  |
 | ------------------- | ------------------- | ---------------------------------------- |
-| `SATQUERY_MOCK` | `1` | `0` enables real model paths |
-| `GEOCHAT_MODEL` | `MBZUAI/geochat-7B` | Hugging Face ID or local checkpoint path |
-| `GEOCHAT_CONV_MODE` | `llava_v1` | GeoChat conversation template |
-| `GEOCHAT_LOAD_4BIT` | `1` | Enables 4-bit loading for limited VRAM |
-| `LORA_ADAPTER` | empty | Optional LoRA adapter path |
-| `CHANGE_MODEL` | empty | Specialist change model path |
-| `OPTICAL_SAR_MODEL` | empty | Specialist optical–SAR model path |
-| `SATQUERY_USE_LLM` | off in mock | Enables LLM-based task routing |
-| `OLLAMA_MODEL` | empty | Ollama model used by the router |
+| `SATQUERY_MOCK`     | `1`                 | `0` enables real model paths             |
+| `GEOCHAT_MODEL`     | `MBZUAI/geochat-7B` | Hugging Face ID or local checkpoint path |
+| `GEOCHAT_CONV_MODE` | `llava_v1`          | GeoChat conversation template            |
+| `GEOCHAT_LOAD_4BIT` | `1`                 | Enables 4-bit loading for limited VRAM   |
+| `LORA_ADAPTER`      | empty               | Optional LoRA adapter path               |
+| `CHANGE_MODEL`      | empty               | Specialist change model path             |
+| `OPTICAL_SAR_MODEL` | empty               | Specialist optical–SAR model path        |
+| `SATQUERY_USE_LLM`  | off in mock         | Enables LLM-based task routing           |
+| `OLLAMA_MODEL`      | empty               | Ollama model used by the router          |
 
 ---
 
@@ -412,14 +412,14 @@ The SIH submission also includes a live prototype / demo reference in the presen
 
 ## Team NorthStar
 
-| Contributor | Role / contribution |
+| Contributor         | Role / contribution |
 | ------------------- | ------------------- |
-| **Poorva Jawale** | Team leader |
-| **Kartik Halkunde** | Team member |
-| **Om Ingale** | Team member |
-| **Sahil Karpe** | Team member |
-| **Nikita Solanki** | Team member |
-| **Lavanya Singh** | Team member |
+| **Poorva Jawale**   | Team leader         |
+| **Kartik Halkunde** | Team member         |
+| **Om Ingale**       | Team member         |
+| **Sahil Karpe**     | Team member         |
+| **Nikita Solanki**  | Team member         |
+| **Lavanya Singh**   | Team member         |
 
 > The repository is a collaborative SIH 2026 final-submission project by Team NorthStar.
 
@@ -447,18 +447,18 @@ Referenced model / research areas include:
 
 ## Current Implementation Status
 
-| Component | Status |
+| Component                      | Status                                                      |
 | ------------------------------ | ----------------------------------------------------------- |
-| Agentic controller | Implemented |
-| Tool/model registry | Implemented |
-| Single-image GeoChat inference | **Live / real** |
-| Single-image VQA | **Live / real** |
-| Captioning / grounding path | **Live through GeoChat tooling** |
-| Bi-temporal change tool | Configurable / mock until specialist checkpoint is supplied |
-| Optical–SAR fusion tool | Configurable / mock until specialist checkpoint is supplied |
-| QLoRA fine-tuning track | Separate training track |
-| Auditable execution trace | Implemented |
-| Web application | Implemented |
+| Agentic controller             | Implemented                                                 |
+| Tool/model registry            | Implemented                                                 |
+| Single-image GeoChat inference | **Live / real**                                             |
+| Single-image VQA               | **Live / real**                                             |
+| Captioning / grounding path    | **Live through GeoChat tooling**                            |
+| Bi-temporal change tool        | Configurable / mock until specialist checkpoint is supplied |
+| Optical–SAR fusion tool        | Configurable / mock until specialist checkpoint is supplied |
+| QLoRA fine-tuning track        | Separate training track                                     |
+| Auditable execution trace      | Implemented                                                 |
+| Web application                | Implemented                                                 |
 
 This status table intentionally separates the working application architecture from specialist models that still need their final trained checkpoints.
 
