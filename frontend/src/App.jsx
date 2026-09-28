@@ -10,6 +10,7 @@ import {
   Trash2,
   X,
   Maximize2,
+  Minimize2,
   ZoomIn,
   ZoomOut,
   RotateCcw,
@@ -40,7 +41,8 @@ import {
   ChartNoAxesCombined,
   LoaderCircle,
   Settings,
-  Info
+  Info,
+  Mic
 } from 'lucide-react';
 import IndiaBackground from './IndiaBackground';
 
@@ -399,39 +401,40 @@ function ProductHeader({ theme, onToggleTheme }) {
       </div>
       <button
         type="button"
-        role="switch"
-        aria-checked={isDark}
-        className={`theme-switch ${isDark ? 'is-dark' : 'is-light'}`}
+        className="product-theme-btn"
         onClick={onToggleTheme}
         title={`Switch to ${isDark ? 'Light' : 'Dark'} mode`}
         aria-label={`Switch to ${isDark ? 'Light' : 'Dark'} mode`}
       >
-        <div className="theme-switch-track">
-          <span className="theme-switch-icon icon-light" aria-hidden="true">
-            <Sun size={13} strokeWidth={2.4} />
-          </span>
-          <span className="theme-switch-icon icon-dark" aria-hidden="true">
-            <Moon size={13} strokeWidth={2.4} />
-          </span>
-          <span className="theme-switch-thumb" aria-hidden="true">
-            {isDark ? <Moon size={12} strokeWidth={2.2} /> : <Sun size={12} strokeWidth={2.2} />}
-          </span>
-        </div>
+        {isDark ? <Sun size={17} strokeWidth={1.9} /> : <Moon size={17} strokeWidth={1.9} />}
       </button>
     </div>
   );
 }
 
-function SceneHeader({ count = 0, max = 2 }) {
+function SceneHeader({ count = 0, max = 2, onClose }) {
   return (
     <div className="scene-header">
       <div className="scene-header-title">
         <h2>Scene Inspector</h2>
       </div>
-      <div className="scene-counter" title="Active scenes loaded">
-        <span className="counter-num">{count}</span>
-        <span className="counter-sep">/</span>
-        <span className="counter-max">{max}</span>
+      <div className="scene-header-right">
+        <div className="scene-counter" title="Active scenes loaded">
+          <span className="counter-num">{count}</span>
+          <span className="counter-sep">/</span>
+          <span className="counter-max">{max}</span>
+        </div>
+        {onClose && (
+          <button
+            type="button"
+            className="scene-sheet-close-btn"
+            onClick={onClose}
+            aria-label="Close Scene Inspector sheet"
+            title="Close"
+          >
+            <X size={16} strokeWidth={2} />
+          </button>
+        )}
       </div>
     </div>
   );
@@ -527,50 +530,61 @@ function ScenePreview({ files, previews, activeIndex, onSelectIndex, dimensions,
 }
 
 function SceneMetadata({ file, index, dimensions }) {
+  const [open, setOpen] = useState(() => (typeof window !== 'undefined' ? window.innerWidth >= 768 : true));
   const format = getFileFormat(file?.name);
   const size = formatFileSize(file?.size);
   const dims = dimensions[index];
 
   return (
-    <div className="scene-section scene-meta-section">
-      <div className="sec-title">
+    <div className={`scene-section scene-meta-section ${open ? 'is-open' : 'is-collapsed'}`}>
+      <button
+        type="button"
+        className="sec-title sec-title-collapsible"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+      >
         <span className="sec-title-label">✦ SCENE INFORMATION</span>
-        <span className="sec-meta">{index === 0 ? 'T1 (Baseline)' : 'T2 (Comparison)'}</span>
-      </div>
-      <div className="meta-table">
-        <div className="meta-row">
-          <span className="meta-label">Format</span>
-          <span className="meta-value">{format}</span>
+        <span className="sec-meta">
+          <span>{index === 0 ? 'T1 (Baseline)' : 'T2 (Comparison)'}</span>
+          {open ? <ChevronUp size={14} strokeWidth={2} /> : <ChevronDown size={14} strokeWidth={2} />}
+        </span>
+      </button>
+      {open && (
+        <div className="meta-table">
+          <div className="meta-row">
+            <span className="meta-label">Format</span>
+            <span className="meta-value">{format}</span>
+          </div>
+          <div className="meta-row">
+            <span className="meta-label">Dimensions</span>
+            <span className="meta-value">{dims ? `${dims} px` : '—'}</span>
+          </div>
+          <div className="meta-row">
+            <span className="meta-label">File size</span>
+            <span className="meta-value">{size}</span>
+          </div>
+          <div className="meta-row">
+            <span className="meta-label">Sensor</span>
+            <span className="meta-value is-muted">Not available</span>
+          </div>
+          <div className="meta-row">
+            <span className="meta-label">Location</span>
+            <span className="meta-value is-muted">Not available</span>
+          </div>
+          <div className="meta-row">
+            <span className="meta-label">Acquisition</span>
+            <span className="meta-value is-muted">Not available</span>
+          </div>
+          <div className="meta-row">
+            <span className="meta-label">Resolution</span>
+            <span className="meta-value is-muted">Not available</span>
+          </div>
+          <div className="meta-row">
+            <span className="meta-label">Bands</span>
+            <span className="meta-value is-muted">Not available</span>
+          </div>
         </div>
-        <div className="meta-row">
-          <span className="meta-label">Dimensions</span>
-          <span className="meta-value">{dims ? `${dims} px` : '—'}</span>
-        </div>
-        <div className="meta-row">
-          <span className="meta-label">File size</span>
-          <span className="meta-value">{size}</span>
-        </div>
-        <div className="meta-row">
-          <span className="meta-label">Sensor</span>
-          <span className="meta-value is-muted">Not available</span>
-        </div>
-        <div className="meta-row">
-          <span className="meta-label">Location</span>
-          <span className="meta-value is-muted">Not available</span>
-        </div>
-        <div className="meta-row">
-          <span className="meta-label">Acquisition</span>
-          <span className="meta-value is-muted">Not available</span>
-        </div>
-        <div className="meta-row">
-          <span className="meta-label">Resolution</span>
-          <span className="meta-value is-muted">Not available</span>
-        </div>
-        <div className="meta-row">
-          <span className="meta-label">Bands</span>
-          <span className="meta-value is-muted">Not available</span>
-        </div>
-      </div>
+      )}
     </div>
   );
 }
@@ -592,7 +606,8 @@ function getModelIcon(name) {
   }
 }
 
-function ModelStatus({ registry = [] }) {
+function ModelStatus({ registry = [], defaultOpen }) {
+  const [open, setOpen] = useState(() => (defaultOpen !== undefined ? defaultOpen : (typeof window !== 'undefined' ? window.innerWidth >= 768 : true)));
   const models = registry.length
     ? registry
     : [{ name: 'geochat' }, { name: 'change' }, { name: 'optical_sar' }];
@@ -607,42 +622,60 @@ function ModelStatus({ registry = [] }) {
   };
 
   return (
-    <div className="scene-section scene-models-section">
-      <div className="sec-title">
+    <div className={`scene-section scene-models-section ${open ? 'is-open' : 'is-collapsed'}`}>
+      <button
+        type="button"
+        className="sec-title sec-title-collapsible"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+      >
         <span className="sec-title-label">✦ AI MODELS</span>
-        <span className="sec-meta">{models.length} online</span>
-      </div>
-      <div className="model-status-list">
-        {models.map((m) => (
-          <div key={m.name} className="model-status-item">
-            <span className="model-name">
-              {getModelIcon(m.name)}
-              <span>{formatName(m.name)}</span>
-            </span>
-            <span className="model-status-pill online">
-              <i className="status-dot online" />
-              Online
-            </span>
-          </div>
-        ))}
-      </div>
+        <span className="sec-meta">
+          <span>{models.length} online</span>
+          {open ? <ChevronUp size={14} strokeWidth={2} /> : <ChevronDown size={14} strokeWidth={2} />}
+        </span>
+      </button>
+      {open && (
+        <div className="model-status-list">
+          {models.map((m) => (
+            <div key={m.name} className="model-status-item">
+              <span className="model-name">
+                {getModelIcon(m.name)}
+                <span>{formatName(m.name)}</span>
+              </span>
+              <span className="model-status-pill online">
+                <i className="status-dot online" />
+                Online
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
-function BenchmarkPanel({ data }) {
-  const [open, setOpen] = useState(false);
+function BenchmarkPanel({ data, defaultOpen = false }) {
+  const [open, setOpen] = useState(defaultOpen);
   if (!data) return null;
   const ft = data.fine_tune || {};
   return (
     <div className="scene-section bench-section">
-      <div className="sec-title bench-head" onClick={() => setOpen((o) => !o)}>
+      <button
+        type="button"
+        className="sec-title bench-head sec-title-collapsible"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+      >
         <span className="sec-title-label">
           <ChartNoAxesCombined size={14} strokeWidth={1.8} />
           BENCHMARKS
         </span>
-        <span className="sec-meta">{open ? 'hide' : 'show'}</span>
-      </div>
+        <span className="sec-meta">
+          <span>{open ? 'hide' : 'show'}</span>
+          {open ? <ChevronUp size={14} strokeWidth={2} /> : <ChevronDown size={14} strokeWidth={2} />}
+        </span>
+      </button>
       {open && (
         <div className="bench-body">
           <div className="bench-ft">Fine-tune <b>{ft.train_samples_before}→{ft.train_samples_after}</b> samples · loss <b>{ft.loss_start}→{ft.loss_end}</b>
@@ -1031,6 +1064,8 @@ function App() {
   const [registry, setRegistry] = useState([]);
   const [viewer, setViewer] = useState(null);
   const [benchmark, setBenchmark] = useState(null);
+  const [mobileTab, setMobileTab] = useState('inspector');
+  const [chatExpanded, setChatExpanded] = useState(false);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -1374,16 +1409,35 @@ function App() {
   const lastReportId = lastReport?.report_id;
 
   return (
-    <div className={`page theme-${theme}`} data-theme={theme}>
+    <div className={`page theme-${theme} mobile-tab-${mobileTab}${chatExpanded ? ' chat-is-expanded' : ''}`} data-theme={theme} data-mobile-tab={mobileTab}>
       <IndiaBackground theme={theme} />
       <div className="tricolor" />
+
+      {/* Top Mobile Header (< 768px) */}
+      <header className="mobile-header">
+        <div className="mobile-brand">
+          <img src="/logo/logo.png" alt="SatqueryAI" className="mobile-logo-img" />
+          <span className="mobile-app-name">SatqueryAI</span>
+        </div>
+        <div className="mobile-header-actions">
+          <button
+            type="button"
+            className="mobile-header-btn"
+            onClick={() => setTheme((t) => (t === 'light' ? 'dark' : 'light'))}
+            title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} mode`}
+            aria-label="Toggle theme"
+          >
+            {theme === 'dark' ? <Sun size={18} strokeWidth={1.8} /> : <Moon size={18} strokeWidth={1.8} />}
+          </button>
+        </div>
+      </header>
 
       <input id="scene-upload" ref={fileInputRef} className="file-input" type="file"
         accept=".tif,.tiff,.png,.jpg,.jpeg" multiple onChange={(e) => startSession(e.target.files)} />
       <input id="scene-add" ref={addSceneInputRef} className="file-input" type="file"
         accept=".tif,.tiff,.png,.jpg,.jpeg" onChange={(e) => addScene(e.target.files)} />
 
-      <main className="workspace">
+      <main className={`workspace mobile-tab-${mobileTab}`}>
         {/* LEFT: Product Identity & Scene Inspector Panel */}
         <section className="glass scene-card scene-inspector" aria-label="Earth Observation Scene Inspector" style={{ '--d': '0ms' }}>
           <ProductHeader
@@ -1433,17 +1487,33 @@ function App() {
               <p className="kicker">✦ AI ASSISTANT</p>
               <h2>Conversation</h2>
             </div>
-            {lastReportId && (
+            <div className="card-head-actions">
+              {lastReportId && (
+                <button
+                  type="button"
+                  className="report-head-btn"
+                  onClick={() => openReport(lastReportId)}
+                  title="Export analysis report"
+                  aria-label="Export analysis report"
+                >
+                  <FileDown size={17} strokeWidth={1.8} />
+                </button>
+              )}
+              {lastReportId && <span className="card-head-divider" aria-hidden="true" />}
               <button
                 type="button"
-                className="report-head-btn"
-                onClick={() => openReport(lastReportId)}
-                title="Open full report in a new tab"
+                className="chat-expand-btn"
+                onClick={() => setChatExpanded((e) => !e)}
+                title={chatExpanded ? "Exit full screen" : "Expand full screen"}
+                aria-label={chatExpanded ? "Exit full screen" : "Expand full screen"}
               >
-                <FileDown size={16} strokeWidth={1.8} />
-                <span>Export report</span>
+                {chatExpanded ? (
+                  <Minimize2 size={17} strokeWidth={1.8} />
+                ) : (
+                  <Maximize2 size={17} strokeWidth={1.8} />
+                )}
               </button>
-            )}
+            </div>
           </div>
 
           <div className="chat-thread" ref={threadRef}>
@@ -1519,6 +1589,15 @@ function App() {
               <span className="prompt-model" title="Active models"><Cpu size={14} strokeWidth={1.8} />{registry.length || 3}</span>
               <button
                 type="button"
+                className="prompt-voice-btn"
+                title="Voice input (coming soon)"
+                aria-label="Voice input"
+                disabled
+              >
+                <Mic size={15} strokeWidth={1.8} />
+              </button>
+              <button
+                type="button"
                 className="k-btn k-btn-primary send"
                 onClick={() => ask()}
                 disabled={loading || !hasScene || !input.trim()}
@@ -1537,6 +1616,34 @@ function App() {
           </div>
         </section>
       </main>
+
+      {/* Persistent Mobile Bottom Navigation Bar (< 768px): Only Inspector and Chat */}
+      <nav className="mobile-bottom-nav" aria-label="Main Navigation">
+        <button
+          type="button"
+          className={`mobile-nav-item ${mobileTab === 'inspector' ? 'is-active' : ''}`}
+          onClick={() => setMobileTab('inspector')}
+          aria-label="Scene Inspector"
+        >
+          <div className="nav-icon-badge-wrap">
+            <Layers size={20} strokeWidth={mobileTab === 'inspector' ? 2.2 : 1.8} />
+            {files.length > 0 && <span className="mobile-nav-badge">{files.length}</span>}
+          </div>
+          <span>Inspector</span>
+        </button>
+        <button
+          type="button"
+          className={`mobile-nav-item ${mobileTab === 'chat' ? 'is-active' : ''}`}
+          onClick={() => setMobileTab('chat')}
+          aria-label="AI Chat"
+        >
+          <div className="nav-icon-badge-wrap">
+            <MessageSquare size={20} strokeWidth={mobileTab === 'chat' ? 2.2 : 1.8} />
+            {messages.length > 0 && <span className="mobile-nav-dot" />}
+          </div>
+          <span>Chat</span>
+        </button>
+      </nav>
 
       <footer className="mission-foot">
         <span><Satellite size={14} strokeWidth={1.8} /> SatQuery AI · Agentic vision–language assistant</span>
