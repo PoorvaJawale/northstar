@@ -24,6 +24,7 @@ reports/
 test_rgb.png
 *.png
 !frontend/**
+!assets/**
 
 # Node
 node_modules/
