@@ -204,37 +204,15 @@ Primary geospatial formats include **GeoTIFF / TIFF**. PNG/JPEG can also be used
 
 ---
 
-## ️ Architecture
+## 🏛️ Architecture
 
-```text
-┌─────────────────────────────────────────────────────────────┐
-│ USER INPUT │
-│ Satellite Image(s) + Natural-Language Query │
-└──────────────────────────────┬──────────────────────────────┘
- ↓
-┌─────────────────────────────────────────────────────────────┐
-│ AI AGENT / QUERY ROUTER │
-│ Inspect → Classify → Validate → Select Tool │
-└──────────────────────────────┬──────────────────────────────┘
- ↓
- ┌─────────────────┼─────────────────┐
- ↓ ↓ ↓
- ┌───────────┐ ┌────────────┐ ┌──────────────┐
- │ GeoChat │ │ Change │ │ Optical-SAR │
- │ VQA / │ │ Analysis │ │ Fusion │
- │ Grounding │ │ │ │ │
- └─────┬─────┘ └──────┬─────┘ └──────┬───────┘
- └──────────────────┼─────────────────┘
- ↓
- ┌──────────────────────┐
- │ EVIDENCE FUSION │
- └──────────┬───────────┘
- ↓
- ┌──────────────────────┐
- │ ANSWER + EVIDENCE │
- │ + CONFIDENCE + TRACE │
- └──────────────────────┘
-```
+<p align="center">
+  <img
+    src="assets/satquery-architecture.png"
+    alt="SatQuery AI Architecture"
+    width="100%"
+  />
+</p>
 
 ---
 
