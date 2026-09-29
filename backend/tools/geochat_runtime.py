@@ -91,6 +91,29 @@ def _install_low_vram_offload(cap: str) -> None:
     GeoChatLlamaForCausalLM._low_vram_patched = True
 
 
+def _disable_mpt_meta_loading() -> None:
+    """Avoid the meta-device loader bug in GeoChat's bundled custom MPT model.
+
+    GeoChat's SharedEmbedding is initialized on ``meta`` and Transformers' low
+    memory loader cannot materialize it on some supported Accelerate versions.
+    Keep the workaround in NorthStar so the third-party GeoChat checkout stays
+    untouched.
+    """
+    from geochat.model.language_model.geochat_mpt import GeoChatMPTForCausalLM
+
+    if getattr(GeoChatMPTForCausalLM, "_northstar_mpt_patched", False):
+        return
+
+    original = GeoChatMPTForCausalLM.from_pretrained.__func__
+
+    def patched(cls, *args, **kwargs):
+        kwargs["low_cpu_mem_usage"] = False
+        return original(cls, *args, **kwargs)
+
+    GeoChatMPTForCausalLM.from_pretrained = classmethod(patched)
+    GeoChatMPTForCausalLM._northstar_mpt_patched = True
+
+
 def numpy_to_pil_rgb(arr: np.ndarray) -> Image.Image:
     """Convert an (H,W) / (H,W,C) satellite array to an 8-bit RGB PIL image with
     a 2–98 percentile stretch (handles multi-band GeoTIFF and SAR dynamic range)."""
@@ -125,6 +148,7 @@ class GeoChatRunner:
         # loaded fully on the GPU; ensure ~5 GB VRAM is free (close Ollama / spare
         # GPU apps). This is the configuration that works on the 6 GB card.
         model_name = get_model_name_from_path(model_path)
+        _disable_mpt_meta_loading()
         # model_base=None -> loads the full geochat-7B checkpoint
         self.tokenizer, self.model, self.image_processor, self.context_len = \
             load_pretrained_model(model_path, None, model_name,
